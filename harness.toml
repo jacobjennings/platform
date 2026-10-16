@@ -148,6 +148,16 @@ known_hosts = "~/.ssh/known_hosts"
 masked_paths = ["~/.aws", "~/.azure", "~/.kube", "~/.docker", "~/.netrc", "~/.git-credentials"]
 
 [orchestrator]
+routes_hard = ["spark/qwen3.8-flash-next"]
+small_only_hosts = ["bb"]
+launcher_limit_hosts = ["spark"]
+default_preset = "jjpc/qwen3.8-27b"
+merge_preset = "none"
+laya_url = "http://laya.lan:8080"
+publish_script = "~/gh/jake-homelab/scripts/publish-report.sh"
+review_model = "gpt-6.1-sol"
+merge_train_model = "gpt-6.1-sol"
+overflow_effort_small = "low"
 # Moderate implementation and fixes: jjpc first, then Spark, before any Sol overflow. bb stays
 # for filler and small work (mklocal drops it for other cards). Jake, 2026-10-07: "Spark was
 # always the priority over sol."
