@@ -162,9 +162,12 @@ Not changed: the model load. Options and why the change is not made here:
    that connects to two workspaces would share one store.
 2. Where to put the cache file, its permissions, and when to drop it after a
    model upgrade are policy choices for the owner.
-3. Estimated cost of the full model load: not measured. It is part of the
-   2.2 seconds of fixed cost in the card. The card's numbers do not split ssh,
-   node start, connect and `loadModel`.
+3. Cost of the full model load: not measured, and not estimable from the code,
+   because the size of the model is not in the repo. The card's 2.2 seconds of
+   fixed cost includes ssh, node start, the accounts calls, the websocket and
+   `loadModel`, and the card does not split them. To measure it on the host,
+   once per connection, log the byte size of the `loadModel` response and the
+   time that `GetClient` takes.
 
 Recommendation: a separate card that adds a per-workspace model store to
 client-resources, keyed by workspace, with the same-hash check and a file in a
