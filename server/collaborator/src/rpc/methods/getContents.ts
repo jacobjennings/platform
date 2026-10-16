@@ -20,8 +20,8 @@ import { RpcMethodParams } from '../rpc'
 
 /**
  * Reads the markup of many documents in one RPC call. Each document is still
- * loaded from storage, but the per-document HTTP request and the two workspace
- * lookups of the single-document path are paid once for the whole batch.
+ * loaded from storage, but the per-document HTTP request and the workspace
+ * lookup that getContext makes for every RPC call are paid once for the batch.
  */
 export async function getContents (
   ctx: MeasureContext,
