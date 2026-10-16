@@ -98,7 +98,7 @@
   $: selectedProject = projectChoice === ALL_PROJECTS ? undefined : (projectChoice as Ref<Space>)
 
   // A remembered project that is archived or not visible any more falls back to all projects.
-  $: if (projects.length > 0 && selectedProject !== undefined && !projects.some(({ _id }) => _id === selectedProject)) {
+  $: if (projects.length > 0 && projectChoice !== ALL_PROJECTS && !projects.some(({ _id }) => _id === projectChoice)) {
     projectChoice = ALL_PROJECTS
   }
 
