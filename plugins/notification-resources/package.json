@@ -53,6 +53,7 @@
     "@hcengineering/platform": "workspace:^0.7.426",
     "@hcengineering/preference": "workspace:^0.7.426",
     "@hcengineering/presentation": "workspace:^0.7.426",
+    "@hcengineering/task": "workspace:^0.7.426",
     "@hcengineering/text": "workspace:^0.7.426",
     "@hcengineering/ui": "workspace:^0.7.426",
     "@hcengineering/view": "workspace:^0.7.426",

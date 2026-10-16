@@ -391,6 +391,7 @@ const notification = plugin(notificationId, {
   },
   component: {
     Inbox: '' as AnyComponent,
+    ActivityFeed: '' as AnyComponent,
     NotificationPresenter: '' as AnyComponent,
     CollaboratorsChanged: '' as AnyComponent,
     DocNotifyContextPresenter: '' as AnyComponent,

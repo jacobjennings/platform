@@ -37,6 +37,7 @@ quota_cache = "~/.cache/huly-platform/provider-quota.json"
 analytics_path = "/codex/cloud/settings/analytics"
 
 [tests]
+node = "/home/jakej/.local/opt/node-22/bin/node"
 full_suite = "node common/scripts/install-run-rush.js test"
 typecheck = "node common/scripts/install-run-rush.js validate"
 setup = ["node common/scripts/install-run-rush.js install"]

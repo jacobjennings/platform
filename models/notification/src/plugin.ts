@@ -38,7 +38,8 @@ export default mergeIds(notificationId, notification, {
   },
   app: {
     Notification: '' as Ref<Application>,
-    Inbox: '' as Ref<Application>
+    Inbox: '' as Ref<Application>,
+    ActivityFeed: '' as Ref<Application>
   },
   ids: {
     CollaboratorsAddMessage: '' as Ref<DocUpdateMessageViewlet>,
