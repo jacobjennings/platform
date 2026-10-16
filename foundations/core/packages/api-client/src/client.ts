@@ -44,6 +44,7 @@ import { addLocation, getResource } from '@hcengineering/platform'
 
 import { type ServerConfig, loadServerConfig } from './config'
 import {
+  type MarkupFetchItem,
   type MarkupFormat,
   type MarkupOperations,
   type MarkupRef,
@@ -59,14 +60,11 @@ import { getWorkspaceToken } from './utils'
 export async function connect (url: string, options: ConnectOptions): Promise<PlatformClient> {
   const config = await loadServerConfig(url)
 
-  const { endpoint, token } = await getWorkspaceToken(url, options, config)
+  // getWorkspaceToken already selected the workspace, so reuse its login info
+  // instead of a second selectWorkspace round trip to the accounts service.
+  const { endpoint, token, info: wsLoginInfo } = await getWorkspaceToken(url, options, config)
   const accountClient = getAccountClient(config.ACCOUNTS_URL, token)
   const socialIds = await accountClient.getSocialIds(true)
-  const wsLoginInfo = await accountClient.selectWorkspace(options.workspace)
-
-  if (wsLoginInfo === undefined) {
-    throw new Error(`Workspace ${options.workspace} not found`)
-  }
 
   const account: Account = {
     uuid: wsLoginInfo.account,
@@ -286,6 +284,15 @@ class PlatformClientImpl implements PlatformClient {
     format: MarkupFormat
   ): Promise<string> {
     return await this.markup.fetchMarkup(objectClass, objectId, objectAttr, markup, format)
+  }
+
+  async fetchMarkups (
+    objectClass: Ref<Class<Doc>>,
+    objectAttr: string,
+    items: MarkupFetchItem[],
+    format: MarkupFormat
+  ): Promise<string[]> {
+    return await this.markup.fetchMarkups(objectClass, objectAttr, items, format)
   }
 
   async uploadMarkup (

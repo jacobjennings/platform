@@ -21,6 +21,14 @@ export type MarkupRef = Ref<Blob>
 /** @public */
 export type MarkupFormat = 'markup' | 'html' | 'markdown'
 
+/**
+ * One document in a batch markup read.
+ * @public */
+export interface MarkupFetchItem {
+  objectId: Ref<Doc>
+  markup: MarkupRef
+}
+
 /** @public */
 export class MarkupContent {
   constructor (
@@ -59,6 +67,21 @@ export interface MarkupOperations {
     id: MarkupRef,
     format: MarkupFormat
   ) => Promise<string>
+
+  /**
+   * Retrieves markup content for many documents of one class and attribute in a single request
+   * @param objectClass - Reference to the class of the documents containing the markup
+   * @param objectAttr - The attribute/field name where the markup is stored
+   * @param items - Object id and markup reference for each document
+   * @param format - The format of the markup (e.g., HTML, Markdown, etc.)
+   * @returns Promise containing the markup for each item, in the same order as items
+   */
+  fetchMarkups: (
+    objectClass: Ref<Class<Doc>>,
+    objectAttr: string,
+    items: MarkupFetchItem[],
+    format: MarkupFormat
+  ) => Promise<string[]>
 
   /**
    * Saves markup content for a document object
