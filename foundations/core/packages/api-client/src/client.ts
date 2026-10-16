@@ -44,6 +44,7 @@ import { addLocation, getResource } from '@hcengineering/platform'
 
 import { type ServerConfig, loadServerConfig } from './config'
 import {
+  type MarkupFetchItem,
   type MarkupFormat,
   type MarkupOperations,
   type MarkupRef,
@@ -283,6 +284,15 @@ class PlatformClientImpl implements PlatformClient {
     format: MarkupFormat
   ): Promise<string> {
     return await this.markup.fetchMarkup(objectClass, objectId, objectAttr, markup, format)
+  }
+
+  async fetchMarkups (
+    objectClass: Ref<Class<Doc>>,
+    objectAttr: string,
+    items: MarkupFetchItem[],
+    format: MarkupFormat
+  ): Promise<string[]> {
+    return await this.markup.fetchMarkups(objectClass, objectAttr, items, format)
   }
 
   async uploadMarkup (

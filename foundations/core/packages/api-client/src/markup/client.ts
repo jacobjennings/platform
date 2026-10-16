@@ -27,7 +27,7 @@ import { htmlToJSON, jsonToHTML, jsonToMarkup, markupToJSON } from '@hcengineeri
 import { markdownToMarkup, markupToMarkdown } from '@hcengineering/text-markdown'
 
 import { type ServerConfig } from '../config'
-import { type MarkupOperations, type MarkupFormat, type MarkupRef } from './types'
+import { type MarkupFetchItem, type MarkupOperations, type MarkupFormat, type MarkupRef } from './types'
 
 export function createMarkupOperations (
   url: string,
@@ -63,6 +63,22 @@ class MarkupOperationsImpl implements MarkupOperations {
   ): Promise<string> {
     const collabId = makeCollabId(objectClass, objectId, objectAttr)
     const markup = await this.collaborator.getMarkup(collabId, doc)
+    return this.convertMarkup(markup, format)
+  }
+
+  async fetchMarkups (
+    objectClass: Ref<Class<Doc>>,
+    objectAttr: string,
+    items: MarkupFetchItem[],
+    format: MarkupFormat
+  ): Promise<string[]> {
+    const markups = await this.collaborator.getMarkups(
+      items.map((item) => ({ document: makeCollabId(objectClass, item.objectId, objectAttr), source: item.markup }))
+    )
+    return markups.map((markup) => this.convertMarkup(markup, format))
+  }
+
+  private convertMarkup (markup: Markup, format: MarkupFormat): string {
     const json = markupToJSON(markup)
 
     switch (format) {

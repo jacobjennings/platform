@@ -46,8 +46,32 @@ export interface UpdateContentRequest {
 export interface UpdateContentResponse {}
 
 /** @public */
+export interface GetMarkupItem {
+  document: CollaborativeDoc
+  source?: Ref<Blob> | null
+}
+
+/** @public */
+export interface GetContentsItem {
+  documentId: string
+  source?: Ref<Blob>
+}
+
+/** @public */
+export interface GetContentsRequest {
+  documents: GetContentsItem[]
+}
+
+/** @public */
+export interface GetContentsResponse {
+  /** Markup keyed by encoded document id, then by attribute */
+  contents: Record<string, Record<string, Markup>>
+}
+
+/** @public */
 export interface CollaboratorClient {
   getMarkup: (document: CollaborativeDoc, source?: Ref<Blob> | null) => Promise<Markup>
+  getMarkups: (items: GetMarkupItem[]) => Promise<Markup[]>
   createMarkup: (document: CollaborativeDoc, markup: Markup) => Promise<MarkupBlobRef>
   updateMarkup: (document: CollaborativeDoc, markup: Markup) => Promise<void>
   copyContent: (source: CollaborativeDoc, target: CollaborativeDoc) => Promise<void>
@@ -108,6 +132,27 @@ class CollaboratorClientImpl implements CollaboratorClient {
     )
 
     return res.content[document.objectAttr] ?? ''
+  }
+
+  async getMarkups (items: GetMarkupItem[]): Promise<Markup[]> {
+    if (items.length === 0) {
+      return []
+    }
+
+    const documents: GetContentsItem[] = items.map(({ document, source }) => ({
+      documentId: encodeDocumentId(this.workspace, document),
+      source: source ?? undefined
+    }))
+
+    const res = await retry(
+      3,
+      async () => {
+        return await this.rpc<GetContentsRequest, GetContentsResponse>(items[0].document, 'getContents', { documents })
+      },
+      50
+    )
+
+    return items.map(({ document }, i) => res.contents[documents[i].documentId]?.[document.objectAttr] ?? '')
   }
 
   async createMarkup (document: CollaborativeDoc, markup: Markup): Promise<MarkupBlobRef> {
