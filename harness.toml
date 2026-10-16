@@ -149,6 +149,10 @@ known_hosts = "~/.ssh/known_hosts"
 masked_paths = ["~/.aws", "~/.azure", "~/.kube", "~/.docker", "~/.netrc", "~/.git-credentials"]
 
 [orchestrator]
+reviewmerge_model = "gpt-6.1-sol"
+reviewmerge_effort = "low"
+reviewmerge_push_retries = 2
+reviewmerge_marker_lifetime_seconds = 300
 routes_hard = ["spark/qwen3.8-flash-next"]
 small_only_hosts = ["bb"]
 launcher_limit_hosts = ["spark"]
