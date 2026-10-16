@@ -17,6 +17,7 @@
 import { type Resources } from '@hcengineering/platform'
 
 import Inbox from './components/inbox/Inbox.svelte'
+import ActivityFeed from './components/feed/ActivityFeed.svelte'
 import NotificationSettings from './components/settings/NotificationSettings.svelte'
 import NotificationPresenter from './components/NotificationPresenter.svelte'
 import DocNotifyContextPresenter from './components/DocNotifyContextPresenter.svelte'
@@ -60,6 +61,7 @@ export { default as NotifyMarker } from './components/NotifyMarker.svelte'
 export default async (): Promise<Resources> => ({
   component: {
     Inbox,
+    ActivityFeed,
     NotificationPresenter,
     NotificationSettings,
     CollaboratorsChanged,

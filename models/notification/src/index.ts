@@ -409,6 +409,20 @@ export function createModel (builder: Builder): void {
     notification.app.Inbox
   )
 
+  builder.createDoc(
+    workbench.class.Application,
+    core.space.Model,
+    {
+      label: activity.string.Activity,
+      icon: activity.icon.Activity,
+      alias: 'activity-feed',
+      hidden: false,
+      component: notification.component.ActivityFeed,
+      order: 51
+    },
+    notification.app.ActivityFeed
+  )
+
   createAction(builder, {
     action: workbench.actionImpl.Navigate,
     actionProps: {
