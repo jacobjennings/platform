@@ -1,6 +1,6 @@
 # huly-platform merge guide
 
-You are a merge worker. You bring reviewed branches into `origin/main`. You
+You are a merge worker. You bring reviewed branches into `origin/jj/activity-feed`. You
 never deploy. Codex loads only the first 32,768 bytes of a project guide, so
 this file holds the merge rules whole. The upstream rule in `AGENTS.md` about
 not running builds is for a person at an editor and does not apply to the merge
@@ -65,9 +65,9 @@ verify each one survives at the merged tip by grepping for its key phrase.
 Never trust the absence of conflict markers. `AGENTS.md` and the files under
 `docs/harness/` hold most rulings.
 
-## Merged means it is in origin/main
+## Merged means it is in origin/jj/activity-feed
 
-Before any card moves to merged, fetch `origin/main` and confirm the merge
+Before any card moves to merged, fetch `origin/jj/activity-feed` and confirm the merge
 commit is in it, with `git merge-base --is-ancestor`. Use the state words
 exactly: code complete, merged, deployed.
 

@@ -8,7 +8,7 @@
 work_authorized = true
 name = "huly-platform"
 repository = "git@github.com:jacobjennings/platform.git"
-main_branch = "main"
+main_branch = "jj/activity-feed"
 checkout = "~/gh/huly-platform"
 waves_root = "~/.cache/huly-platform/waves"
 worktree_root = "~/gh/huly-platform-worktrees"
@@ -57,7 +57,7 @@ suite_runners = []
 
 [checks]
 repository_root = "."
-base = "origin/main"
+base = "origin/jj/activity-feed"
 file_limit = 10000000
 total_limit = 50000000
 size_exceptions = "repository-size-exceptions.json"
@@ -87,7 +87,7 @@ role_index = "~/.cache/huly-platform/launcher/role-index.jsonl"
 report_paths_index = "~/.cache/huly-platform/launcher/report-paths.jsonl"
 brief_tmpdir = "/tmp/huly-platform-workers"
 sparse_pattern = "worker-sparse-checkout.pattern"
-main_branch = "main"
+main_branch = "jj/activity-feed"
 report_directory = "docs/harness/reports"
 pre_declaration_waves = []
 worker_guide = "docs/harness/worker-guide.md"
@@ -126,7 +126,7 @@ board_workspace = "hulyaccessevaluation"
 
 [merge]
 repository = "git@github.com:jacobjennings/platform.git"
-main_branch = "main"
+main_branch = "jj/activity-feed"
 setup = ["node common/scripts/install-run-rush.js install"]
 full_suite = "node common/scripts/install-run-rush.js test"
 typecheck = "node common/scripts/install-run-rush.js validate"

@@ -64,7 +64,7 @@ tests), `docs/` (upstream docs) and `docs/harness/` (harness files).
 - **Your run is not done until your targeted checks pass and your commit is
   pushed.** Never end with a test still running in the background.
 - **Do not merge into main and do not push to main.** Work stays on your
-  branch. Merged means it is in `origin/main`, and the merge lane does that.
+  branch. Merged means it is in `origin/jj/activity-feed`, and the merge lane does that.
 - **Keep large files out of the repository.** A new file over 10 MB, or more
   than 50 MB of new content in total, fails the merge gate.
 - **Name a card by its full link**, such as
@@ -166,6 +166,6 @@ America/Chicago written like `9:53 pm`.
 ## When you need more
 
 The full guide is `AGENTS.md` on the main branch. Read one section of it with
-`git -C <worktree> show origin/main:AGENTS.md | sed -n '/^## <heading>/,/^## /p'`
+`git -C <worktree> show origin/jj/activity-feed:AGENTS.md | sed -n '/^## <heading>/,/^## /p'`
 only when your brief sends you there. `ARCHITECTURE_OVERVIEW.md` and `docs/`
 hold the upstream architecture notes.

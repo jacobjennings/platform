@@ -39,7 +39,7 @@ These fleet rules apply to every project:
 
 - **Three words describe work state, and "landed" is banned**. Code complete
   means a branch is finished and its gate finished. Merged means it is in
-  `origin/main`. Deployed means the change is live on a server.
+  `origin/jj/activity-feed`. Deployed means the change is live on a server.
 
 - **A record commit title starts with Record, Log or Review**. The product
   voice is reserved for product changes.
