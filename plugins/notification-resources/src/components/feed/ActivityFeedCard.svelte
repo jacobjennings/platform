@@ -22,7 +22,7 @@
   import { createEventDispatcher } from 'svelte'
 
   import NotifyMarker from '../NotifyMarker.svelte'
-  import { type FeedGroup } from './feed-query'
+  import { type FeedGroup, newestFeedMessage } from './feed-query'
 
   export let value: FeedGroup
 
@@ -67,7 +67,7 @@
 
   async function updateDisplayMessage (messages: ActivityMessage[]): Promise<void> {
     const combinedMessages = combineActivityMessages(sortActivityMessages(messages))
-    displayMessage = combinedMessages[0]
+    displayMessage = newestFeedMessage(combinedMessages)
   }
 </script>
 

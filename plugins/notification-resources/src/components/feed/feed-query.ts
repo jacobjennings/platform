@@ -62,6 +62,14 @@ export function messageTime (message: ActivityMessage): Timestamp {
   return message.createdOn ?? message.modifiedOn
 }
 
+/** Picks the newest preview even when combined messages arrive oldest first. */
+export function newestFeedMessage<T extends ActivityMessage> (messages: T[]): T | undefined {
+  return messages.reduce<T | undefined>(
+    (newest, message) => newest === undefined || messageTime(message) > messageTime(newest) ? message : newest,
+    undefined
+  )
+}
+
 /**
  * The live query for the feed. With no project it matches every space the
  * server lets the user read. With a project it matches that space only.

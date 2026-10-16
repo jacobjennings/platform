@@ -32,6 +32,7 @@ import {
   markAllFeedRead,
   markFeedDocRead,
   nextFeedLimit,
+  newestFeedMessage,
   parseFeedReadState,
   saveFeedProject,
   saveFeedReadState
@@ -72,6 +73,16 @@ describe('feedMessagesQuery', () => {
 
   it('matches only the chosen project', () => {
     expect(feedMessagesQuery(PROJECT_B)).toEqual({ space: PROJECT_B })
+  })
+})
+
+describe('newestFeedMessage', () => {
+  it('selects the newest preview from ascending, descending and empty results', () => {
+    const older = message('older', 'doc-1', 100)
+    const newer = message('newer', 'doc-1', 300)
+    expect(newestFeedMessage([older, newer])?._id).toBe('newer')
+    expect(newestFeedMessage([newer, older])?._id).toBe('newer')
+    expect(newestFeedMessage([])).toBeUndefined()
   })
 })
 
