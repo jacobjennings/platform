@@ -25,11 +25,12 @@ The source diff sets both policy_file values to harness.toml and removes the dup
 Provider implementation selects Haiku. Review and merge select gpt-6.1-sol at low effort.
 The role index and reviewed-task-ids.json name the same source card.
 The review started after the implementation report commit.
-No newer commits to worker-model-policy.md appeared in the local target history since the base.
+No newer commits to the touched ruling files appeared in target history since the base.
+At the merged tip, rg found the retained phrases for waiting for worker slots, Spark priority, all reviews, Sol Low merges and all projects.
 
 Selection: git diff --name-only origin/jj/activity-feed...HEAD and inspection of the changed configuration and route documents.
 No test-named file was added or changed. No application package changed.
-The merge script will run the brief-required home access check and the reported settings-reader check because no reusable gate record exists.
+The merge script selected the brief-required home access check and the reported settings-reader check because no reusable gate record exists. Both stopped in the runner before any test case ran.
 
 Prose checker, exit 0: `paragraph 7: paragraph-length: This paragraph has 106 words. The warning limit is 90.` The paragraph was split.
 
@@ -44,9 +45,41 @@ The provisional report was committed and pushed before any test.
 - No rendered UI was checked. The change affects harness configuration and documentation.
 - No live worker launch, deployment or server access was performed.
 
+## Merge results
+
+Applied fix commit: 2d5194834d996a255e0cacb359d8aa4f7868f0e2.
+The merge script reviewed tip b11198b62e4181dc23fbb1c8a4b946cccd4af37a.
+It pushed merge commit 91049b4774bf042f2033eedfe29cb5bfa875d8c0 into jj/activity-feed, exit 0.
+Fresh fetch and ancestry checks for the merge and original reviewed commit both exited 0.
+No conflicts occurred.
+
+The script record says `"frozen_files": {"paths": [], "differing_before_merge": [], "restored": [], "differing_after_merge": []}`.
+
+On that merge commit:
+
+- `node common/scripts/install-run-rush.js install` exited 0. This was setup, with no test count.
+- The pinned `checks/home-access-test.py` runner exited 1. No cases ran. Its log says `suite-runner: gate.suite_jobs is required in harness.toml`.
+- The pinned `orchestrator/check-settings-readers-test.py` runner exited 1. No cases ran. Its log has the same error.
+- The done command imported the pin's `orchestrator/orch_config.py` and called `orch_config.load('harness.toml')`. Exit 0. The raw log contains `orch_config.load: ok`.
+- `python3 <harness>/checks/check-repository-size.py` exited 0. Its result was `passed: true`, with 8 new blobs and 64,334 charged bytes.
+
+The test failures are runner setup failures, not passing test evidence.
+The dedicated harness lacks these files, so the named paths use the fork's pin.
+The fork integration change is outside this card under the Director ruling in the brief.
+No tests were run on the target branch to establish prior failures.
+The full suite was not run.
+The final prose checker and git diff --check both exited 0 with no warnings.
+
+The outcome subcommand was not run because it writes a board stage and sends messages.
+This brief forbids board writes. Ancestry was checked directly without contacting the board.
+
 ## Failing after merge
 
-- none
+- /home/jakej/gh/jake-harness-worktrees/huly-platform-pin-d765b05/checks/home-access-test.py: exit 1, `exit status 1`.
+- /home/jakej/gh/jake-harness-worktrees/huly-platform-pin-d765b05/orchestrator/check-settings-readers-test.py: exit 1, `exit status 1`.
+
+These entries copy failing_after_merge in merge-run/reviewmerge.json.
+The detailed runner error for each is quoted above.
 
 ## Hygiene notes
 
@@ -55,6 +88,6 @@ The provisional report was committed and pushed before any test.
 ## RECOMMENDATIONS
 
 No follow-on is declared. The fork pin move remains outside this review under the Director ruling in the brief.
-Merge execution and its recorded results will be appended after the script returns.
+The route change is merged. The failed runner results remain recorded without a claim that tests passed.
 
-NOT MERGED
+MERGED

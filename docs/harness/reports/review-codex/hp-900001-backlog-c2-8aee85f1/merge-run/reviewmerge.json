@@ -1,0 +1,81 @@
+{
+  "tip": "b11198b62e4181dc23fbb1c8a4b946cccd4af37a",
+  "branch": "jj/activity-feed",
+  "retries": 2,
+  "lane_time_limit_seconds": 7200,
+  "worker_record": null,
+  "resolved": null,
+  "lane_wait_seconds": 0.0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "base": "8cce4e86f7eb92ea3a56dfe65ccce011e248e34a",
+      "tested": "91049b4774bf042f2033eedfe29cb5bfa875d8c0",
+      "outcome": "pushed",
+      "conflicted": [],
+      "reviewer_changed": [],
+      "items": [
+        {
+          "item": "/home/jakej/gh/jake-harness-worktrees/huly-platform-pin-d765b05/checks/home-access-test.py",
+          "kind": "test",
+          "reuse": false,
+          "reason": "no worker record for /home/jakej/gh/jake-harness-worktrees/huly-platform-pin-d765b05/checks/home-access-test.py",
+          "gate_reason": "worker-record-missing:no worker record for /home/jakej/gh/jake-harness-worktrees/huly-platform-pin-d765b05/checks/home-access-test.py",
+          "worker_commit": null,
+          "worker_tree": null,
+          "rc": 1,
+          "log": null
+        },
+        {
+          "item": "/home/jakej/gh/jake-harness-worktrees/huly-platform-pin-d765b05/orchestrator/check-settings-readers-test.py",
+          "kind": "test",
+          "reuse": false,
+          "reason": "no worker record for /home/jakej/gh/jake-harness-worktrees/huly-platform-pin-d765b05/orchestrator/check-settings-readers-test.py",
+          "gate_reason": "worker-record-missing:no worker record for /home/jakej/gh/jake-harness-worktrees/huly-platform-pin-d765b05/orchestrator/check-settings-readers-test.py",
+          "worker_commit": null,
+          "worker_tree": null,
+          "rc": 1,
+          "log": null
+        },
+        {
+          "item": "done-1",
+          "kind": "done",
+          "reuse": false,
+          "reason": "a done command runs on every merge",
+          "gate_reason": "finding:done-1, a done command runs on every merge",
+          "worker_commit": null,
+          "worker_tree": null,
+          "rc": 0,
+          "log": null
+        }
+      ]
+    }
+  ],
+  "tested": "91049b4774bf042f2033eedfe29cb5bfa875d8c0",
+  "pushed": "91049b4774bf042f2033eedfe29cb5bfa875d8c0",
+  "outcome": "pushed",
+  "handoffs": [],
+  "unowned_handoff": null,
+  "failing_after_merge": [
+    {
+      "file": "/home/jakej/gh/jake-harness-worktrees/huly-platform-pin-d765b05/checks/home-access-test.py",
+      "rc": 1,
+      "error": "exit status 1",
+      "log": null,
+      "attempt": 1
+    },
+    {
+      "file": "/home/jakej/gh/jake-harness-worktrees/huly-platform-pin-d765b05/orchestrator/check-settings-readers-test.py",
+      "rc": 1,
+      "error": "exit status 1",
+      "log": null,
+      "attempt": 1
+    }
+  ],
+  "frozen_files": {
+    "paths": [],
+    "differing_before_merge": [],
+    "restored": [],
+    "differing_after_merge": []
+  }
+}
