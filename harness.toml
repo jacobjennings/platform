@@ -228,6 +228,9 @@ branch_prefix = "codex/"
 
 [fleet.card_preparation]
 enabled = false
+# Off by default. The routes below are used only when enabled is set true. Never use bb.
+# Matches jake-harness origin/main [fleet.card_preparation].
+routes = ["spark/qwen3.8-flash-next"]
 
 # Sol overflow (Jake, 2026-10-04): when every local route below is healthy and full,
 # implementation work runs on Codex gpt-6.1-sol instead of waiting. A free local slot
