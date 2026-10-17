@@ -101,7 +101,7 @@ role_index = "~/.cache/huly-platform/launcher/role-index.jsonl"
 waves_root = "~/.cache/huly-platform/waves"
 worktrees_root = "~/gh/huly-platform-worktrees"
 checkout = "~/gh/huly-platform"
-policy_file = "docs/harness/worker-model-policy.md"
+policy_file = "harness.toml"
 token_file = "~/.cache/huly-platform/board-token"
 board_kind = "huly"
 board_url = "http://huly.lan"
@@ -156,17 +156,16 @@ reviewmerge_marker_lifetime_seconds = 300
 routes_hard = ["spark/qwen3.8-flash-next"]
 small_only_hosts = ["bb"]
 launcher_limit_hosts = ["spark"]
-default_preset = "jjpc/qwen3.8-27b"
+default_preset = "spark/qwen3.8-flash-next"
 merge_preset = "none"
 laya_url = "http://laya.lan:8080"
 publish_script = "~/gh/jake-homelab/scripts/publish-report.sh"
 review_model = "gpt-6.1-sol"
 merge_train_model = "gpt-6.1-sol"
 overflow_effort_small = "low"
-# Moderate implementation and fixes: jjpc first, then Spark, before any Sol overflow. bb stays
-# for filler and small work (mklocal drops it for other cards). Jake, 2026-10-07: "Spark was
-# always the priority over sol."
-routes_moderate = ["jjpc/qwen3.8-27b", "spark/qwen3.8-flash-next", "bb/qwen3.8-27b-awq"]
+# Moderate routes are not listed twice. They follow [fleet] tiers.moderate, the one list both
+# readers use (orch_config _moderate_routes), as in jake-harness origin/main. Jake, 2026-10-07:
+# "Spark was always the priority over sol."
 docs_checkout = "~/gh/huly-platform"
 state_dir = "~/.cache/huly-platform/orchestrator"
 role_index = "~/.cache/huly-platform/launcher/role-index.jsonl"
@@ -176,7 +175,7 @@ opencode_launcher = "/home/jakej/gh/jake-harness-worktrees/huly-platform-pin-d76
 native_launcher = "/home/jakej/gh/jake-harness-worktrees/huly-platform-pin-d765b05/launch/run-native-worker.sh"
 brief_checker = "/home/jakej/gh/jake-harness-worktrees/huly-platform-pin-d765b05/briefs/check-brief.py"
 opencode_policy_checker = "/home/jakej/gh/jake-harness-worktrees/huly-platform-pin-d765b05/policy/check-opencode-launch-policy.py"
-policy_file = "docs/harness/worker-model-policy.md"
+policy_file = "harness.toml"
 board_cli = "/home/jakej/gh/jake-harness-worktrees/huly-platform-pin-d765b05/board/huly-board-cli.cjs"
 board_scripts = "/home/jakej/gh/jake-harness-worktrees/huly-platform-pin-d765b05/supervision"
 owner_git_name = "Jacob Jennings"
@@ -203,10 +202,16 @@ harness_merge_effort = "low"
 merge_train_effort = "low"
 
 [fleet]
-tiers = { hard = ["spark/qwen3.8-flash-next"], moderate = ["jjpc/qwen3.8-27b", "spark/qwen3.8-flash-next"], small = ["bb/qwen3.8-27b-awq", "jjpc/qwen3.8-27b", "spark/qwen3.8-flash-next"] }
+# Tiers match jake-harness origin/main [fleet]. bb takes small work only (owner ruling 2026-09-30,
+# confirmed 2026-10-04), so it is forbidden for hard and moderate.
+tiers = { hard = ["spark/qwen3.8-flash-next"], moderate = ["spark/qwen3.8-flash-next"], small = ["bb/qwen3.8-27b-awq", "spark/qwen3.8-flash-next"] }
+forbidden_tier_routes = { hard = ["bb/qwen3.8-27b-awq"], moderate = ["bb/qwen3.8-27b-awq"] }
 default_tier = "moderate"
 effort = "default"
-filler_routes = ["spark/qwen3.8-flash-next", "jjpc/qwen3.8-27b", "bb/qwen3.8-27b-awq"]
+# Filler is off for this project. Owner, 16 October 2026: "Let's remove the filler process.
+# Things have changed, we are not using the 5090 for workers." The pinned reader still requires
+# the key and allows it to be empty. filler_time_limits stays because it needs a default entry.
+filler_routes = []
 filler_time_limits = { default = "20m", "spark/" = "40m" }
 reservation_grace_seconds = 900
 launch_wait_seconds = 60
@@ -223,6 +228,9 @@ branch_prefix = "codex/"
 
 [fleet.card_preparation]
 enabled = false
+# Off by default. The routes below are used only when enabled is set true. Never use bb.
+# Matches jake-harness origin/main [fleet.card_preparation].
+routes = ["spark/qwen3.8-flash-next"]
 
 # Sol overflow (Jake, 2026-10-04): when every local route below is healthy and full,
 # implementation work runs on Codex gpt-6.1-sol instead of waiting. A free local slot
@@ -233,7 +241,27 @@ provider = "openai"
 model = "gpt-6.1-sol"
 effort = "medium"
 roles = ["implementation"]
-local_routes = ["spark/qwen3.8-flash-next", "jjpc/qwen3.8-27b"]
+local_routes = ["spark/qwen3.8-flash-next"]
+
+# Provider worker routing, copied from jake-harness origin/main [provider_worker]. Every board
+# priority runs on the primary selection (Haiku through OpenCode). The credit-exhausted fallback
+# is Haiku through the Claude CLI. Owner, 9 October 2026: "Let's run Haiku via opencode and API
+# key for workers for a while, with Sol Low reviewers." Owner, 11 October 2026: "the swap to haiku
+# via claude cli WHEN the haiku via opencode route fails due to the $200 api credit used up is approved."
+[provider_worker]
+priorities = ["0", "1", "2", "3", "4", "urgent", "high", "medium", "low", "none"]
+
+[provider_worker.primary]
+launcher = "opencode"
+provider = "anthropic"
+model = "anthropic/claude-haiku-5-5"
+effort = "xhigh"
+
+[provider_worker.fallback]
+launcher = "claude"
+provider = "anthropic"
+model = "claude-haiku-5-5"
+effort = "xhigh"
 
 # Launch policy: the one place routing lives (owner ruling of 11
 # October 2026: "yes to toml"). The launch gates in policy/ and the route
@@ -250,7 +278,7 @@ claude_permitted_models = "claude-haiku-5-5"
 
 [launch_policy.opencode]
 # Local cluster routes and roles, docs/local-cluster.md.
-opencode_worker_default_preset = "jjpc/qwen3.8-27b"
+opencode_worker_default_preset = "spark/qwen3.8-flash-next"
 # Owner, 29 September 2026: "Old hosted routes: retire, but keep the info on how
 # to use them in case I change things later." So no reviewer fallback route: the
 # dispatcher reads none as no fallback, and a review waits when the Claude review
@@ -261,7 +289,7 @@ opencode_glm_prohibited_roles = "implementation,analysis"
 opencode_qwen_model = "openrouter/qwen/qwen3.7-flash"
 opencode_qwen_permitted_purpose = "image-understanding"
 opencode_qwen_prohibited_roles = "implementation,analysis,review,merge,reviewmerge"
-opencode_local_routes = "jjpc/qwen3.8-27b,spark/qwen3.8-flash-next,bb/qwen3.8-27b-awq"
+opencode_local_routes = "spark/qwen3.8-flash-next,bb/qwen3.8-27b-awq"
 opencode_local_permitted_roles = "implementation,analysis"
 
 [launch_policy.anthropic]
@@ -279,7 +307,7 @@ anthropic_required_effort = "xhigh"
 # review model above, under the opus launcher, because that is the launcher the
 # dispatcher allows for review. jake-harness lanes launch their own reviews by
 # hand through the orchestrator, on the owner's Codex account.
-analysis = { launcher = "opencode", model = "jjpc/qwen3.8-27b", effort = "default" }
+analysis = { launcher = "opencode", model = "spark/qwen3.8-flash-next", effort = "default" }
 review = { launcher = "opus", model = "gpt-6.1-sol", effort = "low", reason = "owner ruling of 9 October 2026: reviews use Sol low" }
 merge = { launcher = "native", model = "gpt-6.1-sol", effort = "low", reason = "owner ruling of 5 October 2026: Merges can go to Sol Low." }
 

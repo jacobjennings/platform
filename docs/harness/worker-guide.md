@@ -129,14 +129,23 @@ Your model forgets the start of the conversation when its context fills.
 
 ## Side jobs on the local cluster
 
-- `local-subagent.sh '<question>'` runs a small isolated job on the small
-  model, for a summary, a classification or a quick lookup.
-- `local-subagent.sh --deep '<question>'` uses the full jjpc model.
+The routes for these modes are set in `harness.toml`, not here.
+
+- `local-subagent.sh '<question>'` runs a small isolated job, for a summary, a
+  classification or a quick lookup.
+- `local-subagent.sh --deep '<question>'` runs a larger job on the deep route.
 - `local-subagent.sh --vision <image> '<question>'` asks the vision route
   about an image.
 - The side job sees only your question, so write it so it stands alone.
 - Exit 75 means that machine is full. Exit 65 means it is down. Do not retry
   in a loop. Carry on without it and say so in your report.
+
+## Routes and escalation
+
+Routes are set only in `harness.toml`. Haiku is the worker model for all sizes of work.
+If Haiku fails a task because it is too hard, say so in your final message. The owner
+decides whether a stronger model may run it, one approved job at a time. See
+`docs/harness/worker-model-policy.md`.
 
 ## Tests that fail by design
 

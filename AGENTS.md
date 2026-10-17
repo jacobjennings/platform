@@ -17,7 +17,7 @@ tracked on the Huly board project `HP`
 (<http://huly.lan/workbench/hulyaccessevaluation/tracker/>). Workers do not read this file.
 They read `docs/harness/worker-guide.md`, and reviews and merges read
 `docs/harness/review-guide.md` and `docs/harness/merge-guide.md`. A rule that workers must
-follow goes in those guides. Worker routes are in `docs/harness/worker-model-policy.md`.
+follow goes in those guides. Worker routes are in `harness.toml`.
 Workers never deploy. A deploy to `huly.lan` is an owner step after merge, and nothing the
 harness runs contacts that server.
 
