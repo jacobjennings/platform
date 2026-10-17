@@ -26,7 +26,8 @@ Provider implementation selects Haiku. Review and merge select gpt-6.1-sol at lo
 The role index and reviewed-task-ids.json name the same source card.
 The review started after the implementation report commit.
 No newer commits to the touched ruling files appeared in target history since the base.
-At the merged tip, rg found the retained phrases for waiting for worker slots, Spark priority, all reviews, Sol Low merges and all projects.
+
+At the merged tip, rg found the retained phrases for waiting for worker slots, Spark priority, all reviews, merges at low effort and all projects.
 
 Selection: git diff --name-only origin/jj/activity-feed...HEAD and inspection of the changed configuration and route documents.
 No test-named file was added or changed. No application package changed.
@@ -68,7 +69,15 @@ The dedicated harness lacks these files, so the named paths use the fork's pin.
 The fork integration change is outside this card under the Director ruling in the brief.
 No tests were run on the target branch to establish prior failures.
 The full suite was not run.
-The final prose checker and git diff --check both exited 0 with no warnings.
+The prose checker and git diff --check exited 0.
+An intermediate prose check also warned:
+
+```
+paragraph 9: paragraph-length: This paragraph has 92 words. The warning limit is 90.
+paragraph 9: possible-jargon: Explain 'Sol Low' in this sentence if it is a project term.
+```
+
+The paragraph was split and the model effort phrase was expanded.
 
 The outcome subcommand was not run because it writes a board stage and sends messages.
 This brief forbids board writes. Ancestry was checked directly without contacting the board.
