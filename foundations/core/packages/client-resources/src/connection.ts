@@ -58,6 +58,7 @@ import core, {
 import platform, { getMetadata, PlatformError, Severity, Status } from '@hcengineering/platform'
 import { HelloRequest, HelloResponse, type RateLimitInfo, ReqId, type Response, RPCHandler } from '@hcengineering/rpc'
 import { uncompress } from 'snappyjs'
+import { RateLimitWaitLogger } from './rateLimitWait'
 
 const SECOND = 1000
 const pingTimeout = 10 * SECOND
@@ -285,6 +286,8 @@ class Connection implements ClientConnection {
 
   currentRateLimit: RateLimitInfo | undefined
   slowDownTimer = 0
+  // Diagnostics only: one warning per rate-limit wait burst.
+  private readonly rateLimitWaits = new RateLimitWaitLogger((message, obj) => this.ctx.warn(message, obj))
 
   handleMsg (socketId: number, resp: Response<any>): void {
     if (this.closed) {
@@ -323,7 +326,9 @@ class Connection implements ClientConnection {
         if (resp.rateLimit !== undefined) {
           const { remaining, retryAfter } = resp.rateLimit
           if (remaining === 0) {
-            void new Promise((resolve) => setTimeout(resolve, retryAfter ?? 1)).then(() => {
+            const retryAfterMs = retryAfter ?? 1
+            this.rateLimitWaits.wait(retryAfterMs, this.requests.size)
+            void new Promise((resolve) => setTimeout(resolve, retryAfterMs)).then(() => {
               // Retry after a while, so rate limits allow to call more.
               promise?.sendData()
             })

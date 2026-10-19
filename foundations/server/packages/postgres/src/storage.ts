@@ -84,6 +84,7 @@ import {
   type TxAdapter
 } from '@hcengineering/server-core'
 import type postgres from 'postgres'
+import { createSlowSql } from './diagnostics'
 import {
   getDocFieldsByDomains,
   getSchema,
@@ -2164,9 +2165,10 @@ export async function createPostgresAdapter (
 ): Promise<DbAdapter> {
   const client = getDBClient(url)
   const connection = await client.getClient()
+  const slowSql = createSlowSql(ctx)
   return new PostgresAdapter(
-    createDBClient(connection),
-    client.mgr,
+    slowSql.wrapClient(createDBClient(connection)),
+    slowSql.wrapMgr(client.mgr),
     client,
     wsIds.uuid,
     hierarchy,
@@ -2186,10 +2188,11 @@ export async function createPostgresTxAdapter (
 ): Promise<TxAdapter> {
   const client = getDBClient(url)
   const connection = await client.getClient()
+  const slowSql = createSlowSql(ctx)
 
   return new PostgresTxAdapter(
-    createDBClient(connection),
-    client.mgr,
+    slowSql.wrapClient(createDBClient(connection)),
+    slowSql.wrapMgr(client.mgr),
     client,
     wsIds.uuid,
     hierarchy,
