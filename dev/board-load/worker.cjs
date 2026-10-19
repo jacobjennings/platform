@@ -65,10 +65,20 @@ async function run(operation, request) {
   }
   if (operation === 'exhaust') {
     const connection = await nativeConnection(config)
+    let pending
     try {
-      await measure('exhaust-queries', () => Promise.all(Array.from({length: 110}, () =>
-        connection.client.findAll(connection.tracker.class.Project, {}, { limit: 1, showArchived: true }))))
+      // More than 2 * 1500 rejects exercises the limiter's future-timestamp branch.
+      // Connect while those real queries remain outstanding, then drain them.
+      const before = snapshot()
+      const started = performance.now()
+      pending = Promise.all(Array.from({ length: 400 }, () =>
+        connection.client.findAll(connection.tracker.class.Project, {}, { limit: 1, showArchived: true })))
+      await new Promise(resolve => setTimeout(resolve, 2000))
       await measure('connect-after-exhaust', async () => { const c = await nativeConnection(config); await c.client.close() })
+      await pending
+      const row = { at: new Date().toISOString(), operation: 'exhaust-queries', lane: options.lane ?? 0,
+        concurrency: options.concurrency ?? 1, ms: performance.now() - started, ok: true, overlappingConnect: true, ...diff(before) }
+      process.send(row)
     } finally { await connection.client.close() }
     return
   }
@@ -98,5 +108,5 @@ async function main() {
   })
   process.send({ ready: true })
 }
-const timer = setTimeout(() => { console.error('Local load worker deadline'); process.exit(124) }, 20 * 60 * 1000)
+const timer = setTimeout(() => { console.error('Local load worker deadline'); process.exit(124) }, 40 * 60 * 1000)
 main().then(() => { if (options.mode === 'smoke') { board.close(); clearTimeout(timer) } }).catch(error => { console.error(error.message); board.close(); clearTimeout(timer); process.exitCode = 1 })

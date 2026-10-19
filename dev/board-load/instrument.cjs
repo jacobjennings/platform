@@ -6,7 +6,7 @@ const fs = require('node:fs')
 const Module = require('node:module')
 const { performance } = require('node:perf_hooks')
 const root = path.resolve(__dirname, '../..')
-const counters = { http: {}, rpc: {}, rateLimited: 0, model: [], markup: { ok: 0, empty: 0, error: 0 }, httpFailed: 0 }
+const counters = { http: {}, rpc: {}, rateLimited: 0, model: [], markup: { ok: 0, empty: 0, error: 0 }, httpFailed: 0, hello: [] }
 const inc = (map, key) => { map[key] = (map[key] || 0) + 1 }
 const allowed = new Set(['config', 'account', 'collaborator', 'transactor'])
 function assertLocal(value) {
@@ -32,7 +32,7 @@ const pending = new Map()
 RPCHandler.prototype.serialize = function (request, binary) {
   if (request.method) {
     inc(counters.rpc, request.method)
-    if (request.method === 'loadModel') pending.set(request.id, performance.now())
+    if (request.method === 'loadModel' || request.method === 'hello') pending.set(request.id, { method: request.method, at: performance.now() })
   }
   return serialize.call(this, request, binary)
 }
@@ -40,7 +40,7 @@ RPCHandler.prototype.readResponse = function (data, binary) {
   const response = read.call(this, data, binary)
   if (response.rateLimit?.remaining === 0) counters.rateLimited++
   if (pending.has(response.id) && response.result !== undefined) {
-    counters.model.push({ ms: performance.now() - pending.get(response.id),
+    counters[pending.get(response.id).method === 'hello' ? 'hello' : 'model'].push({ ms: performance.now() - pending.get(response.id).at,
       decodedJsonBytes: Buffer.byteLength(JSON.stringify(response.result)),
       wireBytes: data.byteLength ?? Buffer.byteLength(data) })
     pending.delete(response.id)
@@ -68,7 +68,7 @@ function loadBoard() {
 function snapshot() { return structuredClone(counters) }
 function diff(before) {
   const result = { http: {}, rpc: {}, rateLimited: counters.rateLimited - before.rateLimited,
-    model: counters.model.slice(before.model.length), httpFailed: counters.httpFailed - before.httpFailed,
+    model: counters.model.slice(before.model.length), hello: counters.hello.slice(before.hello.length), httpFailed: counters.httpFailed - before.httpFailed,
     markup: Object.fromEntries(Object.entries(counters.markup).map(([k,v]) => [k, v - before.markup[k]])) }
   for (const kind of ['http', 'rpc']) for (const [key, value] of Object.entries(counters[kind])) {
     if (value !== (before[kind][key] || 0)) result[kind][key] = value - (before[kind][key] || 0)

@@ -26,7 +26,7 @@ base images. The small config service supplies the API configuration normally
 served by the front end. The browser UI, fulltext and optional integrations are
 not part of this board workload. All containers explicitly use `runc`, without
 device requests. The services and runner have four-hour lifetimes. Each worker
-has a twenty-minute deadline and each scenario a ninety-minute deadline.
+has a forty-minute deadline per operation and each scenario a ninety-minute deadline.
 
 The first pass uses one shared local account, a fresh native connection per
 operation, a 1,500 request budget and a 30 second window. The matrix is 1, 4, 8
@@ -53,8 +53,8 @@ No server behavior is optimized. Direct SQL writes are confined to fixture setup
 
 The mixed load runs two launcher/sweep pairs every two minutes, two health
 checks every minute and one 300-card migration. Its three sweep rounds span at
-least four minutes. The rate-limit comparison issues 1,760 real project reads
-from sixteen clients, then measures connects, once with a shared account and
+least four minutes. The rate-limit comparison issues 6,400 real project reads
+from sixteen clients, measures connects while the queries are outstanding, once with a shared account and
 once with separate accounts. A persistent-session ping comparison is also saved.
 
 The copied client files remain unchanged. `instrument.cjs` compiles the client
