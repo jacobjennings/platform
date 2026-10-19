@@ -87,6 +87,14 @@ import {
 } from '@hcengineering/server-core'
 import { generateToken, type Token } from '@hcengineering/server-token'
 import { ClientSession } from './client'
+import {
+  ConnectTimings,
+  envNumber,
+  EventLoopDelayMonitor,
+  MinuteRequestStats,
+  queryKeys,
+  RateLimitRefusalLogger
+} from './diagnostics'
 import { sendResponse } from './utils'
 import { Workspace } from './workspace'
 
@@ -271,6 +279,10 @@ export class TSessionManager implements SessionManager {
       this.counters.check()
     }
 
+    if (this.ticks !== 0 && this.ticks % (60 * ticksPerSecond) === 0) {
+      this.logMinuteSummary()
+    }
+
     if (this.ticks % (60 * ticksPerSecond) === 0) {
       const workspacesToUpdate: WorkspaceUuid[] = []
 
@@ -330,6 +342,61 @@ export class TSessionManager implements SessionManager {
       } else {
         workspace.softShutdown = workspaceSoftShutdownTicks
       }
+    }
+  }
+
+  private logMinuteSummary (): void {
+    interface SummaryKey {
+      user: string
+      service: string
+      requests: number
+      refusals: number
+      maxMs: number
+      p95Ms: number
+      sessions: number
+      helloNoRequest: number
+    }
+    const keys = new Map<string, SummaryKey>()
+    for (const stat of this.minuteRequestStats.drain()) {
+      const key = stat.user + stat.service
+      keys.set(key, { ...stat, sessions: 0, helloNoRequest: 0 })
+    }
+    for (const ref of this.sessions.values()) {
+      const key = this.rateLimitKey(ref.session)
+      let entry = keys.get(key)
+      if (entry === undefined) {
+        entry = {
+          user: ref.session.getUser(),
+          service: this.serviceName(ref.session),
+          requests: 0,
+          refusals: 0,
+          maxMs: 0,
+          p95Ms: 0,
+          sessions: 0,
+          helloNoRequest: 0
+        }
+        keys.set(key, entry)
+      }
+      entry.sessions++
+      if (this.connectTimings.isWaiting(ref.session.sessionId)) {
+        entry.helloNoRequest++
+      }
+    }
+
+    const eventLoop = this.eventLoopMonitor.sample()
+    this.ctx.info('minute summary', {
+      sessions: this.sessions.size,
+      keys: Array.from(keys.values()),
+      eventLoopP50Ms: eventLoop?.p50Ms,
+      eventLoopP99Ms: eventLoop?.p99Ms,
+      heapUsedMb: Math.round((process.memoryUsage().heapUsed / (1024 * 1024)) * 10) / 10
+    })
+    if (eventLoop !== undefined && eventLoop.p99Ms >= this.eventLoopWarnMs) {
+      this.ctx.warn('event loop delay', {
+        p50Ms: eventLoop.p50Ms,
+        p99Ms: eventLoop.p99Ms,
+        thresholdMs: this.eventLoopWarnMs
+      })
     }
   }
 
@@ -1116,6 +1183,7 @@ export class TSessionManager implements SessionManager {
         totalUsers: this.sessions.size
       })
       this.sessions.delete(ws.id)
+      this.connectTimings.remove(sessionRef.session.sessionId)
 
       if (workspace !== undefined) {
         workspace.sessions.delete(sessionRef.session.sessionId)
@@ -1389,6 +1457,85 @@ export class TSessionManager implements SessionManager {
     () => Date.now()
   )
 
+  // Diagnostics only. These never change a limit, a timeout or a response.
+  rateLimitWindowMs = parseInt(process.env.RATE_LIMIT_WINDOW ?? '30000')
+  slowRequestMs = envNumber('HULY_SLOW_REQUEST_MS', 2000)
+  slowConnectMs = envNumber('HULY_SLOW_CONNECT_MS', 5000)
+  eventLoopWarnMs = envNumber('HULY_EVENT_LOOP_WARN_MS', 200)
+  readonly rateLimitRefusals = new RateLimitRefusalLogger((message, obj) => this.ctx.warn(message, obj))
+  readonly minuteRequestStats = new MinuteRequestStats()
+  readonly connectTimings = new ConnectTimings()
+  readonly eventLoopMonitor = new EventLoopDelayMonitor(true)
+
+  private rateLimitKey (service: Session): string {
+    if (service.getUser() === systemAccountUuid) {
+      return '#sys#' + (service.token.extra?.service ?? '') + service.workspace.uuid
+    }
+    return service.getUser() + (service.token.extra?.service ?? '')
+  }
+
+  private serviceName (service: Session): string {
+    return service.token.extra?.service ?? 'user'
+  }
+
+  private logRateLimitRefusal (service: Session, info: RateLimitInfo, method: string): void {
+    const key = this.rateLimitKey(service)
+    this.minuteRequestStats.refusal(key, service.getUser(), this.serviceName(service))
+    this.rateLimitRefusals.refused(key, {
+      user: service.getUser(),
+      service: this.serviceName(service),
+      limit: info.limit,
+      windowMs: this.rateLimitWindowMs,
+      retryAfter: info.retryAfter,
+      method
+    })
+  }
+
+  private logSlowRequest (
+    service: Session,
+    method: string,
+    params: any[],
+    requestId: Request<any>['id'],
+    source: 'websocket' | 'rpc',
+    startedAt: number,
+    execStart: number,
+    finishedAt: number
+  ): void {
+    const totalMs = finishedAt - startedAt
+    const key = this.rateLimitKey(service)
+    this.minuteRequestStats.request(key, service.getUser(), this.serviceName(service), totalMs)
+    const resultCount = (service as any).requestResultCount?.get(requestId)
+    ;(service as any).requestResultCount?.delete(requestId)
+    if (totalMs >= this.slowRequestMs) {
+      const isFind = method === 'findAll'
+      this.ctx.warn('slow request', {
+        method,
+        source,
+        class: isFind ? params[0] : undefined,
+        queryKeys: isFind ? queryKeys(params[1]) : undefined,
+        resultCount,
+        user: service.getUser(),
+        service: this.serviceName(service),
+        sessionId: service.sessionId,
+        queuedMs: execStart - startedAt,
+        executionMs: finishedAt - execStart,
+        totalMs
+      })
+    }
+    if (method === 'findAll' || method === 'loadModel') {
+      const connectMs = this.connectTimings.complete(service.sessionId, finishedAt)
+      if (connectMs !== undefined && connectMs >= this.slowConnectMs) {
+        this.ctx.warn('slow connect', {
+          user: service.getUser(),
+          service: this.serviceName(service),
+          sessionId: service.sessionId,
+          method,
+          helloToResponseMs: connectMs
+        })
+      }
+    }
+  }
+
   checkRate (service: Session): RateLimitInfo {
     if (service.getUser() === systemAccountUuid) {
       return this.sysLimitter.checkRateLimit('#sys#' + (service.token.extra?.service ?? '') + service.workspace.uuid)
@@ -1408,6 +1555,8 @@ export class TSessionManager implements SessionManager {
     const source = service.token.extra?.service ?? '🤦‍♂️user'
 
     const st = Date.now()
+    let execStart = st
+    let timedRequest = false
     try {
       if (request.time != null) {
         const delta = Date.now() - request.time
@@ -1454,6 +1603,7 @@ export class TSessionManager implements SessionManager {
         rateLimit = this.checkRate(service)
         // The last accepted request has no remaining capacity but no retry delay.
         if (rateLimit?.retryAfter !== undefined) {
+          this.logRateLimitRefusal(service, rateLimit, request.method)
           service.updateLast()
           void ws.send(
             requestCtx,
@@ -1492,6 +1642,8 @@ export class TSessionManager implements SessionManager {
           ws.sendPong()
           return
         }
+        execStart = Date.now()
+        timedRequest = true
         await this.counters.withCounter('request', 1, () =>
           workspace.with(async (pipeline) => {
             await requestCtx.with(
@@ -1529,6 +1681,18 @@ export class TSessionManager implements SessionManager {
       }
     } finally {
       service.requests.delete(reqId)
+      if (timedRequest) {
+        this.logSlowRequest(
+          service,
+          request.method,
+          Array.isArray(request.params) ? request.params : [],
+          request.id,
+          'websocket',
+          st,
+          execStart,
+          Date.now()
+        )
+      }
     }
   }
 
@@ -1542,6 +1706,7 @@ export class TSessionManager implements SessionManager {
     const rateLimitStatus = this.checkRate(service)
     // The last accepted request has no remaining capacity but no retry delay.
     if (rateLimitStatus?.retryAfter !== undefined) {
+      this.logRateLimitRefusal(service, rateLimitStatus, method)
       return await Promise.resolve(rateLimitStatus)
     }
 
@@ -1551,6 +1716,8 @@ export class TSessionManager implements SessionManager {
     const reqId = generateId()
 
     const st = Date.now()
+    let execStart = st
+    let timedRequest = false
     try {
       const workspace = this.workspaces.get(service.workspace.uuid)
       if (workspace === undefined || workspace.closing !== undefined) {
@@ -1564,6 +1731,8 @@ export class TSessionManager implements SessionManager {
       })
 
       try {
+        execStart = Date.now()
+        timedRequest = true
         await this.counters.withCounter('request', 1, () =>
           workspace.with(async (pipeline) => {
             await requestCtx.with(
@@ -1602,6 +1771,9 @@ export class TSessionManager implements SessionManager {
       return undefined
     } finally {
       service.requests.delete(reqId)
+      if (timedRequest) {
+        this.logSlowRequest(service, method, [], reqId, 'rpc', st, execStart, Date.now())
+      }
     }
   }
 
@@ -1640,6 +1812,7 @@ export class TSessionManager implements SessionManager {
   ): Promise<void> {
     try {
       const hello = request as HelloRequest
+      this.connectTimings.hello(service.sessionId, Date.now())
       service.binaryMode = hello.binary ?? false
       service.useCompression = this.enableCompression ? (hello.compression ?? false) : false
 

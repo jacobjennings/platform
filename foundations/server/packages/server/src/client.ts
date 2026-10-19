@@ -79,6 +79,8 @@ export class ClientSession implements Session {
 
   total: StatisticsElement = { find: 0, tx: 0 }
   current: StatisticsElement = { find: 0, tx: 0 }
+  // Diagnostics only: result count of the last find response per request id.
+  requestResultCount = new Map<number | string, number>()
   mins5: StatisticsElement = { find: 0, tx: 0 }
   measures: { id: string, message: string, time: 0 }[] = []
 
@@ -222,6 +224,9 @@ export class ClientSession implements Session {
       const result = await this.counter.withCounter('find-' + domain, 1, () =>
         this.findAllRaw(ctx, _class, query, options)
       )
+      if (ctx.requestId !== undefined) {
+        this.requestResultCount.set(ctx.requestId, result.length)
+      }
 
       await this.counter.withCounter('clientSendMemory', this.estimateSize(result), () =>
         ctx.sendResponse(ctx.requestId, result)

@@ -58,6 +58,7 @@ import core, {
 import platform, { getMetadata, PlatformError, Severity, Status } from '@hcengineering/platform'
 import { HelloRequest, HelloResponse, type RateLimitInfo, ReqId, type Response, RPCHandler } from '@hcengineering/rpc'
 import { uncompress } from 'snappyjs'
+import { RateLimitWaitLogger } from './rateLimitWait'
 
 const SECOND = 1000
 const pingTimeout = 10 * SECOND
@@ -271,6 +272,7 @@ class Connection implements ClientConnection {
   private clearRetryTimers (): void {
     for (const timer of this.retryTimers) {
       clearTimeout(timer)
+      this.rateLimitWaiting--
     }
     this.retryTimers.clear()
     for (const req of this.requests.values()) {
@@ -362,6 +364,9 @@ class Connection implements ClientConnection {
 
   currentRateLimit: RateLimitInfo | undefined
   slowDownTimer = 0
+  // Diagnostics only: one warning per rate-limit wait burst.
+  private rateLimitWaiting = 0
+  private readonly rateLimitWaits = new RateLimitWaitLogger((message, obj) => this.ctx.warn(message, obj))
 
   handleMsg (socketId: number, resp: Response<any>): void {
     if (this.closed) {
@@ -400,14 +405,17 @@ class Connection implements ClientConnection {
         if (resp.rateLimit !== undefined) {
           const { remaining, retryAfter } = resp.rateLimit
           if (remaining === 0) {
+            const retryAfterMs = retryAfter ?? 1
+            this.rateLimitWaits.wait(retryAfterMs, ++this.rateLimitWaiting)
             const timer = setTimeout(() => {
               this.retryTimers.delete(timer)
+              this.rateLimitWaiting--
               // A closed connection owns no further attempt.
               if (!this.closed) {
                 // Retry after a while, so rate limits allow to call more.
                 promise?.sendData()
               }
-            }, retryAfter ?? 1)
+            }, retryAfterMs)
             this.retryTimers.add(timer)
             return
           }
