@@ -28,19 +28,32 @@ global.fetch = (url, options) => {
 const { RPCHandler } = require(`${root}/foundations/core/packages/rpc/lib`)
 const serialize = RPCHandler.prototype.serialize
 const read = RPCHandler.prototype.readResponse
-const pending = new Map()
+const pendingByHandler = new WeakMap()
+function pendingFor(handler) {
+  if (!pendingByHandler.has(handler)) pendingByHandler.set(handler, new Map())
+  return pendingByHandler.get(handler)
+}
 RPCHandler.prototype.serialize = function (request, binary) {
+  const pending = pendingFor(this)
   if (request.method) {
     inc(counters.rpc, request.method)
-    if (request.method === 'loadModel' || request.method === 'hello') pending.set(request.id, { method: request.method, at: performance.now() })
+    if (request.method === 'loadModel' || request.method === 'hello') {
+      const now = performance.now()
+      const entry = pending.get(request.id) || { method: request.method, at: now, attempts: 0 }
+      entry.lastAt = now
+      entry.attempts++
+      pending.set(request.id, entry)
+    }
   }
   return serialize.call(this, request, binary)
 }
 RPCHandler.prototype.readResponse = function (data, binary) {
   const response = read.call(this, data, binary)
+  const pending = pendingFor(this)
   if (response.rateLimit?.remaining === 0) counters.rateLimited++
   if (pending.has(response.id) && response.result !== undefined) {
     counters[pending.get(response.id).method === 'hello' ? 'hello' : 'model'].push({ ms: performance.now() - pending.get(response.id).at,
+      lastAttemptMs: performance.now() - pending.get(response.id).lastAt, attempts: pending.get(response.id).attempts,
       decodedJsonBytes: Buffer.byteLength(JSON.stringify(response.result)),
       wireBytes: data.byteLength ?? Buffer.byteLength(data) })
     pending.delete(response.id)

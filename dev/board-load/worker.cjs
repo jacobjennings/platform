@@ -27,6 +27,7 @@ async function measure(operation, work) {
   if (result?.tasks) {
     row.tasks = result.tasks.length
     row.nonemptyDescriptions = result.tasks.filter(task => task.description.trim()).length
+    if (operation === 'readSupervisionBoard') row.qualityOk = row.nonemptyDescriptions === 6913
     row.comments = result.tasks.reduce((n,t) => n + t.comments.length, 0)
   }
   if (result?.applied !== undefined) row.applied = result.applied

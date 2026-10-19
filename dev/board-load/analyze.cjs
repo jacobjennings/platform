@@ -22,7 +22,7 @@ for (const name of process.argv.slice(2).length ? process.argv.slice(2) : ['base
   for (const [key, rows] of groups) {
     const frames = events.filter(event => rows.some(row => Date.parse(event.at) <= Date.parse(row.at) && Date.parse(event.at) >= Date.parse(row.at) - row.ms))
     const models = rows.flatMap(row => row.model)
-    summary[key] = { samples: rows.length, errors: rows.filter(row => !row.ok).length,
+    summary[key] = { samples: rows.length, errors: rows.filter(row => !row.ok).length, partial: rows.filter(row => row.qualityOk === false || (row.operation === 'readSupervisionBoard' && row.nonemptyDescriptions !== undefined && row.nonemptyDescriptions < 6913)).length,
       p50Ms: percentile(rows.map(row => row.ms),.5), p95Ms: percentile(rows.map(row => row.ms),.95), maxMs: Math.max(...rows.map(row => row.ms)),
       medianHttp: percentile(rows.map(row => Object.values(row.http).reduce((a,b)=>a+b,0)),.5),
       medianRpc: percentile(rows.map(row => Object.values(row.rpc).reduce((a,b)=>a+b,0)),.5),
