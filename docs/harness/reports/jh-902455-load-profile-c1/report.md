@@ -236,7 +236,70 @@ The restored issues are in task. Tracker contains four component rows. The
 restored task, activity and tags tables have only their primary indexes on
 workspaceId and _id. Actual CockroachDB plans will be reported below.
 
-## Controlled stall, comparisons and mixed load
+## Controlled stall and comparisons
+
+The burst configured 16 clients with 400 project reads each, then started a new
+connect per client after a two-second offset. The shared run sent all 6,400 reads.
+The inclusive burst spans recorded 30,201 RPC sends and 23,753 rate-limit responses.
+The span includes connect probes and one later read per client.
+
+| Run | Operation | Clients | n | p50 ms | p95 ms | Max ms | Errors | Partial | Censored |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| stall-shared | connect-after-exhaust | 16 | 16 | 28343.1 | 387815.9 | 387815.9 | 0 | 0 | 0 |
+| stall-shared | read-after-exhaust | 16 | 16 | 3470.6 | 389687.3 | 389687.3 | 0 | 0 | 0 |
+| stall-shared | exhaust-queries | 16 | 16 | 391640.1 | 419959.2 | 419959.2 | 0 | 0 | 0 |
+| stall-separate | prime-connect | 16 | 11 | 514712.0 | 514723.0 | 514723.0 | 11 | 0 | 11 |
+| stall-separate | connect-after-exhaust | 16 | 5 | 511350.5 | 511406.0 | 511406.0 | 5 | 0 | 5 |
+| stall-raised | prime-connect | 16 | 16 | 759.5 | 768.8 | 768.8 | 0 | 0 | 0 |
+| stall-raised | connect-after-exhaust | 16 | 16 | 309.8 | 462.7 | 462.7 | 0 | 0 | 0 |
+| stall-raised | read-after-exhaust | 16 | 16 | 33.7 | 108.2 | 108.2 | 0 | 0 | 0 |
+| stall-raised | exhaust-queries | 16 | 16 | 2419.2 | 2483.2 | 2483.2 | 0 | 0 | 0 |
+| shared | ping | 1 | 20 | 1.3 | 2.2 | 410.0 | 0 | 0 | 0 |
+
+The normal-limit connect p95 was 387,815.9 ms. Hello median was 15.9 ms and model
+load p95 was 387,740.8 ms. The transactor averaged 2.33% of one CPU core over
+these probe intervals. Event loop p95 delay was 10.6 ms. This reproduces a fast
+hello followed by a multi-minute connect wait on an otherwise quiet transactor.
+It does not establish the cause of the historical production incidents.
+
+The separate-account attempt found an independent global stall. Eleven initial
+connects never completed their model. Five clients reached the later connect
+probe. Therefore this run did not put all 6,400 configured separate-account
+queries on the wire. No observed rate-limit response or adaptive pacing
+explained the pending model loads.
+
+Those attempts were censored after sustained lack of progress. Their table
+values are measured lower bounds, not completed response times. Initial-connect
+bounds start at server hello, excluding earlier login time. Later-probe bounds
+use the client's last measured elapsed time. The raw rows carry this distinction.
+Only the recorded scenario processes in the dedicated runner were stopped.
+
+CockroachDB then showed ten idle transactor sessions and no active transactor
+query. A read-only debugger inspection saw 17 managed client_async contexts,
+ten holding one idle connection each and seven holding none. The pool maximum
+is ten. The captured call stack passed through OnUserStatus, syncChat, trigger
+findAll and ConnectionMgr.retry. A diagnostic connection contributed to the
+inspection state. Pool starvation is observed. The originating reservation cycle
+still needs a focused follow-up to establish and repair its full cause.
+
+After restarting only the owned transactor and raising the local limit to
+1,000,000, the same shared-account workload completed without rate-limit responses.
+Connect p95 was 462.7 ms, a measured 838.1-fold ratio against the normal-limit
+burst. This is a diagnostic configuration comparison. It is not a server fix
+or a production quota recommendation. The pool issue remains independently real.
+The normal 1,500 limit was restored before the remaining workloads.
+
+The post-burst read probe recorded up to 74,070 ms of scheduled client pacing.
+Its total elapsed time also includes account-level waiting, so it is not a pure
+pacing microbenchmark. The scheduled delay itself is observed by the client hook.
+
+Twenty pings using the existing shared native connection had median 1.3 ms and
+p95 2.2 ms. The maximum 410.0 ms includes the initial connection. The baseline
+fresh-connection ping median was about 132 ms. This demonstrates the value of
+reuse for cold callers. The production broker may already cover some callers,
+so a coverage audit must precede claiming those savings there.
+
+## Mixed load
 
 Pending completion.
 

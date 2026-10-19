@@ -10,18 +10,15 @@ Problem: the limiter shares a budget across connections for the same account
 and service. It also inserts future timestamps after excessive rejections.
 The client silently retries throttled RPCs, including model loads.
 
-Scope: the fork's sliding limiter, session rate-limit response and client retry
-handling. Separate the policy choice about quotas from correctness. A rejected
-request must not consume new capacity or extend the observation window into the
-future. Publish bounded retry delays and surface throttling in connect diagnostics.
-Ensure client pacing decays on healthy responses. Its current decrease branch is
-unreachable at the normal 1,500-request limit because it is inside a remaining < 50
-guard. Retain the intended per-account policy unless the owner chooses a new quota model.
+Scope: the fork's sliding limiter and session rate-limit response. Separate
+quota policy from correctness. A rejected request must not consume new capacity
+or record accepted work in the future. Return bounded retry delays and preserve
+the intended account and service scope unless the owner chooses a new policy.
 
-Acceptance: reproduce the local shared-account burst before and after. Compare
-separate accounts. Check hello latency, loadModel latency, retry counts, recovery
-time and transactor idle time. Add focused limiter and retry tests under this card.
-A lost connection must cancel outstanding retries.
+Acceptance: reproduce the local shared-account burst before and after at the
+same 1,500-request limit. Check recovery time, rejected sends and model load time.
+Test window boundaries, capacity accounting and rejection storms. Add focused
+limiter tests under this follow-up card.
 
 ## Add CockroachDB indexes for board query shapes
 
@@ -180,3 +177,38 @@ Acceptance: identical canonical hashes for all 2,430 JH cards, labels and status
 facts at both page sizes. Rerun 1, 4, 8 and 16 clients and record requests, payload
 bytes, errors and p95. Include moving-card and server-cap cases. State whether
 the caller already supplies a larger page size before claiming production savings.
+
+## Decay adaptive client pacing after recovery
+
+Problem: connection.ts increases slowDownTimer inside a remaining < 50 guard.
+At the normal limit, healthy responses cannot reach the decrement branch. The
+mixed load recorded hundreds of seconds of scheduled pacing after only one
+rate-limit rejection. The burst recorded a single later read scheduling 74,070 ms
+of client delay, exceeding the harness's ordinary per-RPC deadline.
+
+Scope: the fork's native client response and pacing logic. Bound the delay and
+make it decay on healthy windows. Preserve useful congestion control without
+keeping an obsolete penalty for the connection's lifetime. Coordinate the
+before and after experiment with the separate server limiter correction.
+
+Acceptance: measure scheduled pacing, wire requests and elapsed time before,
+during and after a spent budget. A healthy response must reduce the delay.
+Include persistent connections and the committed mixed migration workload.
+Add focused pacing tests under this card.
+
+## Cancel RPC retries and model connects at the owning deadline
+
+Problem: timed-out markup reads and native connects continue in the background.
+The four-client trace recorded 569 collaborator attempts in a later migration
+phase, originating from an earlier partial read. Unfinished connects can retain
+websockets and later download a model after their caller has already failed.
+
+Scope: the fork's client and the harness's bounded connection and call lifecycle.
+Cancel retry timers, close unfinished connections and abort supported HTTP work
+when the owning request ends. Preserve uncertain-write read-back semantics.
+Do not replay a timed-out write automatically.
+
+Acceptance: after a deliberately blocked connect or description fetch times out,
+no orphan RPC, model download or HTTP retry remains owned by that call. Track
+sockets and pending work as well as traffic. Test close during retry and while
+loadModel is pending. Add focused cancellation tests under this follow-up.
