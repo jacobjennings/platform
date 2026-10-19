@@ -95,6 +95,13 @@ for scenario in ${BOARD_LOAD_SCENARIOS:-baseline stall-shared stall-separate sha
   sleep 31
 done
 exec_node sql-diagnostics.cjs > "$run_results/sql-statistics.log" 2>&1
+cp "$run_results/statement-statistics.json" "$run_results/statement-statistics-before-diagnostic.json"
+"$node_bin" "$folder/patch-sql-profile.cjs"
+PROFILE_SQL=true "${compose[@]}" up -d --no-deps transactor > "$run_results/sql-service.log" 2>&1
+"${compose[@]}" ps -aq >> "$ids"
+docker exec "$runner" node /repo/dev/board-load/wait-ready.cjs
+exec_node driver.cjs diagnostic > "$run_results/diagnostic-progress.log" 2>&1
+exec_node sql-diagnostics.cjs > "$run_results/sql-plans.log" 2>&1
 # Flush the last per-phase inspector profile before shutting down the source transactor.
 result_files=()
 for scenario in ${BOARD_LOAD_SCENARIOS:-baseline stall-shared stall-separate shared mixed}; do result_files+=("$scenario.jsonl"); done

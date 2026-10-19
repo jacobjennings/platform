@@ -74,7 +74,7 @@ async function main() {
     await close(children)
   } else if (output.startsWith('stall')) {
     const separate = output.includes('separate')
-    const children = await group(16, separate, true)
+    const children = await group(16, separate, true, 16)
     await phase(output)
     await command(children, 'exhaust')
     await close(children)

@@ -8,7 +8,7 @@ async function main() {
   const db = getDBClient('postgresql://root@db:26257/profile?sslmode=disable', undefined, 'profile-diagnostics')
   try {
     const sql = await db.getClient()
-    const statistics = await sql.unsafe(`SELECT metadata->>'query' AS query,
+    let statistics = await sql.unsafe(`SELECT metadata->>'query' AS query,
       (statistics->'statistics'->>'cnt')::INT AS calls,
       (statistics->'statistics'->'svcLat'->>'mean')::FLOAT AS mean_seconds,
       statistics, sampled_plan, index_recommendations
@@ -16,6 +16,8 @@ async function main() {
       AND metadata->>'query' LIKE 'SELECT %'
       AND metadata->>'query' NOT LIKE '%profile_%'
       ORDER BY mean_seconds DESC`)
+    const saved = `${folder}/statement-statistics-before-diagnostic.json`
+    if (fs.existsSync(`${folder}/sql-selects.jsonl`) && fs.existsSync(saved)) statistics = JSON.parse(fs.readFileSync(saved))
     fs.writeFileSync(`${folder}/statement-statistics.json`, JSON.stringify(statistics, null, 2))
     if (!fs.existsSync(`${folder}/sql-selects.jsonl`)) { console.log(`Saved ${statistics.length} fingerprints`); return }
     const captured = fs.readFileSync(`${folder}/sql-selects.jsonl`, 'utf8').trim().split('\n').filter(Boolean).map(line => JSON.parse(line))
@@ -32,7 +34,7 @@ async function main() {
       used.add(statement.query)
       const started = performance.now()
       const plan = await sql.unsafe('EXPLAIN ANALYZE ' + statement.query, statement.parameters)
-      plans.push({ fingerprint: fingerprint.query, baselineCalls: fingerprint.calls, baselineMeanSeconds: fingerprint.mean_seconds,
+      plans.push({ fingerprint: fingerprint.query, measuredCalls: fingerprint.calls, measuredMeanSeconds: fingerprint.mean_seconds,
         query: statement.query, parameters: statement.parameters, elapsedMs: performance.now() - started, plan })
       if (plans.length === 6) break
     }

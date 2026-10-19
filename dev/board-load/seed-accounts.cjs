@@ -11,10 +11,10 @@ async function main() {
   const [db, close] = await getAccountDB('postgresql://root@db:26257/profile?sslmode=disable')
   try {
     const ctx = new MeasureMetricsContext('local-profile', {})
-    const credentials = []
+    const credentials = process.argv.includes('--extend') ? JSON.parse(fs.readFileSync(`${stateFolder}/accounts.json`)) : []
     const workspace = await db.workspace.findOne({ url: 'hulyaccessevaluation' })
     if (!workspace) throw new Error('Snapshot workspace missing')
-    for (let i = 0; i < 16; i++) {
+    for (let i = credentials.length; i < 17; i++) {
       const email = `load-${crypto.randomUUID()}@localhost.invalid`
       const password = crypto.randomBytes(32).toString('hex')
       const { account } = await signUpByEmail(ctx, db, null, email, password, 'Local', `Load ${i}`, true)
@@ -23,7 +23,7 @@ async function main() {
     }
     fs.writeFileSync(`${stateFolder}/accounts.json`, JSON.stringify(credentials), { mode: 0o600 })
     credentials.forEach((entry, i) => fs.writeFileSync(`${stateFolder}/account-${i}.json`, JSON.stringify(entry), { mode: 0o600 }))
-    console.log('Created 16 isolated local load accounts')
+    console.log('Prepared 17 isolated local load accounts')
   } finally { close() }
 }
 main().catch(error => { console.error(error.message); process.exitCode = 1 })

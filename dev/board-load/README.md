@@ -56,8 +56,9 @@ No server behavior is optimized. Direct SQL writes are confined to fixture setup
 The mixed load runs two launcher/sweep pairs every two-minute pauses, two health
 checks every minute and one 1,000-card migration. Its three sweep rounds span at
 least four minutes. The rate-limit comparison issues 6,400 real project reads
-from sixteen clients, measures connects while the queries are outstanding, once with a shared account and
-once with separate accounts. A persistent-session ping comparison is also saved.
+from sixteen clients, measures connects while the queries are outstanding, once with a dedicated shared account and
+once with sixteen separate accounts. Seventeen local identities keep the shared
+burst's future-dated rejection history out of the separate-account comparison. A persistent-session ping comparison is also saved.
 
 The copied client files remain unchanged. `instrument.cjs` compiles the client
 in memory with its configuration reader replaced by explicit local settings and
@@ -73,7 +74,8 @@ one inspector CPU profile per phase. The transactor additionally runs with
 `patch-sql-profile.cjs` optionally instruments the ignored server bundle for a
 separate SQL diagnostic pass. It records the first parameterized SELECT of each
 shape. It does not change source or record writes. SQL capture is disabled in
-the latency baseline.
+the latency baseline. The runner restarts only its own transactor afterward for
+a diagnostic pass and EXPLAIN ANALYZE of matching slow statement fingerprints.
 
 To print an existing run again:
 
