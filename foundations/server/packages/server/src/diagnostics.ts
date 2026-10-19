@@ -84,6 +84,7 @@ export class RateLimitRefusalLogger {
 }
 
 export interface KeyRequestStats {
+  key: string
   user: string
   service: string
   requests: number
@@ -93,6 +94,7 @@ export interface KeyRequestStats {
 }
 
 interface KeyAccumulator {
+  key: string
   user: string
   service: string
   requests: number
@@ -107,7 +109,7 @@ export class MinuteRequestStats {
   private get (key: string, user: string, service: string): KeyAccumulator {
     let acc = this.keys.get(key)
     if (acc === undefined) {
-      acc = { user, service, requests: 0, refusals: 0, times: [] }
+      acc = { key, user, service, requests: 0, refusals: 0, times: [] }
       this.keys.set(key, acc)
     }
     return acc
@@ -129,6 +131,7 @@ export class MinuteRequestStats {
     const result: KeyRequestStats[] = []
     for (const acc of this.keys.values()) {
       result.push({
+        key: acc.key,
         user: acc.user,
         service: acc.service,
         requests: acc.requests,
