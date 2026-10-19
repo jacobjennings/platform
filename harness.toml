@@ -5,6 +5,9 @@
 # owner step after merge, so every deploy command here is empty.
 
 [project]
+# JH reserve source (owner, 19 Oct 2026: "File them per project. HP retires."). Cards labelled
+# repo:huly-platform on the JH board run here. JH-902453.
+repo_registry = "~/gh/jake-harness/harness.toml"
 work_authorized = true
 name = "huly-platform"
 repository = "git@github.com:jacobjennings/platform.git"
@@ -14,6 +17,7 @@ waves_root = "~/.cache/huly-platform/waves"
 worktree_root = "~/gh/huly-platform-worktrees"
 
 [board]
+repo_label = "repo:huly-platform"
 offline = false
 kind = "huly"
 url = "http://huly.lan"
@@ -26,8 +30,8 @@ pageSize = 50
 timeout = 600000
 number_floor = 1
 workspace = "hulyaccessevaluation"
-project_identifier = "HP"
-stage_status_projects = ["HP"]
+project_identifier = "JH"
+stage_status_projects = ["JH"]
 project_template_identifier = "JH"
 
 [policy]
