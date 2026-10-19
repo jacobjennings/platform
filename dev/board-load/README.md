@@ -51,8 +51,8 @@ Each measured client migrates a disjoint 300-card slice in the harness's real
 The fixture resets before each concurrency group and before the mixed load.
 No server behavior is optimized. Direct SQL writes are confined to fixture setup.
 
-The mixed load runs two launcher/sweep pairs every two minutes, two health
-checks every minute and one 300-card migration. Its three sweep rounds span at
+The mixed load runs two launcher/sweep pairs every two-minute pauses, two health
+checks every minute and one 1,000-card migration. Its three sweep rounds span at
 least four minutes. The rate-limit comparison issues 6,400 real project reads
 from sixteen clients, measures connects while the queries are outstanding, once with a shared account and
 once with separate accounts. A persistent-session ping comparison is also saved.

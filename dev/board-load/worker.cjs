@@ -22,6 +22,7 @@ async function measure(operation, work) {
   const row = { at: new Date().toISOString(), operation, lane: options.lane ?? 0,
     concurrency: options.concurrency ?? 1, ms: performance.now() - start, ok: !error,
     ...(error ? { error } : {}), ...diff(before) }
+  if (result !== undefined) row.resultJsonBytes = Buffer.byteLength(JSON.stringify(result))
   if (result?.rows) row.rows = result.rows.length
   if (result?.tasks) {
     row.tasks = result.tasks.length
@@ -56,10 +57,11 @@ async function run(operation, request) {
   if (operation === 'migrateStageLabelsToStatus') {
     const ids = JSON.parse(fs.readFileSync(`${stateFolder}/migration-ids.json`))
     const lane = request.mixed ? 0 : (options.lane ?? 0)
-    const cards = ids.slice(lane * 300, (lane + 1) * 300)
+    const count = request.mixed ? 1000 : 300
+    const cards = request.mixed ? ids.slice(0, count) : ids.slice(lane * count, (lane + 1) * count)
     return measure(operation, async () => {
       const result = await board.migrateStageLabelsToStatus(true, [], { cards, batchSize: 25 })
-      if (result.applied !== 300) throw new Error(`Migration applied ${result.applied}, expected 300`)
+      if (result.applied !== count) throw new Error(`Migration applied ${result.applied}, expected ${count}`)
       return result
     })
   }

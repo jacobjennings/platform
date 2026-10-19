@@ -87,7 +87,7 @@ async function main() {
     const children = await group(5, false, true)
     execFileSync(process.execPath, [path.join(__dirname, 'prepare-migration.cjs'), 'reset'])
     await phase(output)
-    // Five minutes, two independent launcher/sweep lanes, two health lanes and one migration.
+    // Two launcher/sweep lanes, two health lanes and one 1000-card migration.
     const schedule = [
       (async () => { for (let i = 0; i < 3; i++) { await command([children[0]], 'sweep', { project: 'JH' }); if (i < 2) await sleep(120000) } })(),
       (async () => { for (let i = 0; i < 3; i++) { await command([children[1]], 'sweep', { project: 'VK8' }); if (i < 2) await sleep(120000) } })(),
