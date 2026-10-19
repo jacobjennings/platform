@@ -228,13 +228,10 @@ merge_train_effort = "low"
 # confirmed 2026-10-04), so it is forbidden for hard and moderate.
 tiers = { hard = ["spark/qwen3.8-flash-next"], moderate = ["spark/qwen3.8-flash-next"], small = ["bb/qwen3.8-27b-awq", "spark/qwen3.8-flash-next"] }
 forbidden_tier_routes = { hard = ["bb/qwen3.8-27b-awq"], moderate = ["bb/qwen3.8-27b-awq"] }
-default_tier = "moderate"
 effort = "default"
 # Filler is off for this project. Owner, 16 October 2026: "Let's remove the filler process.
 # Things have changed, we are not using the 5090 for workers." The pinned reader still requires
 # the key and allows it to be empty. filler_time_limits stays because it needs a default entry.
-filler_routes = []
-filler_time_limits = { default = "20m", "spark/" = "40m" }
 reservation_grace_seconds = 900
 launch_wait_seconds = 60
 lock_wait_seconds = 60
@@ -252,91 +249,45 @@ branch_prefix = "codex/"
 enabled = false
 # Off by default. The routes below are used only when enabled is set true. Never use bb.
 # Matches jake-harness origin/main [fleet.card_preparation].
-routes = ["spark/qwen3.8-flash-next"]
 
-# Sol overflow (Jake, 2026-10-04): when every local route below is healthy and full,
-# implementation work runs on Codex gpt-6.1-sol instead of waiting. A free local slot
-# still comes first. See docs/harness/worker-model-policy.md.
-[overflow]
-enabled = true
-provider = "openai"
-model = "gpt-6.1-sol"
-effort = "medium"
-roles = ["implementation"]
-local_routes = ["spark/qwen3.8-flash-next"]
+[health]
+# Added by repin: default from harness pin /home/jakej/gh/huly-platform-worktrees/huly-platform-pin-9054554 (90545543416a9a2702ef3c89999cf0967280e726).
+interval_minutes = 40
 
-# Provider worker routing, copied from jake-harness origin/main [provider_worker]. Every board
-# priority runs on the primary selection (Haiku through OpenCode). The credit-exhausted fallback
-# is Haiku through the Claude CLI. Owner, 9 October 2026: "Let's run Haiku via opencode and API
-# key for workers for a while, with Sol Low reviewers." Owner, 11 October 2026: "the swap to haiku
-# via claude cli WHEN the haiku via opencode route fails due to the $200 api credit used up is approved."
-[provider_worker]
-priorities = ["0", "1", "2", "3", "4", "urgent", "high", "medium", "low", "none"]
+# Routes copied verbatim from jake-harness main (owner, 19 Oct 2026: "The fork should match JH routes.").
 
-[provider_worker.primary]
-launcher = "opencode"
-provider = "anthropic"
-model = "anthropic/claude-haiku-5-5"
-effort = "xhigh"
-
-
-# Launch policy: the one place routing lives (owner ruling of 11
+# Launch allowance settings (owner ruling of 11
 # October 2026: "yes to toml"). The launch gates in policy/ and the route
 # resolver in supervision/worker_routes.py read these tables. A routing change
 # is a one-line edit here, not a card. Each value keeps the owner ruling it
 # came from, as a comment beside it.
 [launch_policy.claude]
 # Owner, 10 October 2026: "Haiku through the harness's Claude CLI launcher approved".
-# The gate refuses a Claude launch for any role or model not listed here.
+# The gate checks the role and model against the route table [routes."claude/<model>"],
+# whose roles and model fields are the one source of that fact.
 claude_new_launch_not_before_utc = "2020-01-01T00:00:00Z"
 claude_allowance_status = "available"
-claude_permitted_roles = "implementation"
-claude_permitted_models = "claude-haiku-5-5"
 
 [launch_policy.opencode]
-# Local cluster routes and roles, docs/local-cluster.md.
-opencode_worker_default_preset = "spark/qwen3.8-flash-next"
+# The checker and run-opencode-worker.sh now read each route's own [routes."NAME"] table:
+# its provider, roles (or prohibited_roles), purpose and model. The only OpenCode routing
+# facts that stay here are the reviewer fallback preset and the optional local route pair.
 # Owner, 29 September 2026: "Old hosted routes: retire, but keep the info on how
 # to use them in case I change things later." So no reviewer fallback route: the
 # dispatcher reads none as no fallback, and a review waits when the Claude review
 # route is down. A local route is refused for review by the role rule below.
-# The retired glm route stays in openrouter_models, [launch_policy.opencode_presets].
 opencode_reviewer_fallback_preset = "none"
-opencode_glm_prohibited_roles = "implementation,analysis"
-opencode_qwen_model = "openrouter/qwen/qwen3.7-flash"
-opencode_qwen_permitted_purpose = "image-understanding"
-opencode_qwen_prohibited_roles = "implementation,analysis,review,merge,reviewmerge"
-opencode_local_routes = "spark/qwen3.8-flash-next,bb/qwen3.8-27b-awq"
-opencode_local_permitted_roles = "implementation,analysis"
+# Owner ruling, 16 October 2026 about 7:11 pm CDT, given in chat and relayed to the JH Director:
+# "jake-harness does not send tasks to the local GPUs on bb and spark. The code is there but it's
+# not the current policy." The pair opencode_local_routes and opencode_local_permitted_roles is
+# left out, so no OpenCode run can pick bb or spark. The policy checker reads a missing pair as no
+# local route, and it refuses an empty list ("names no route"), which would refuse every OpenCode
+# launch. The loader code stays. Name a route here again only on a new owner ruling.
 
-[launch_policy.anthropic]
-# Owner, 9 October 2026: "Let's run Haiku via opencode and API key for workers
-# for a while, with Sol Low reviewers." Implementation only. Credit exhaustion
-# persists until a Director removes the unhealthy marker under the user
-# jake-harness config directory; provider work then uses the Claude CLI with Haiku.
-anthropic_model = "anthropic/claude-haiku-5-5"
-anthropic_permitted_roles = "implementation"
-# The opencode launcher refuses an Anthropic route at any other effort.
-anthropic_required_effort = "xhigh"
-
-[launch_policy.automatic_routes]
-# The dispatcher's automatic role routes. The review route names the policy
-# review model above, under the opus launcher, because that is the launcher the
-# dispatcher allows for review. jake-harness lanes launch their own reviews by
-# hand through the orchestrator, on the owner's Codex account.
-analysis = { launcher = "opencode", model = "spark/qwen3.8-flash-next", effort = "default" }
-review = { launcher = "opus", model = "gpt-6.1-sol", effort = "low", reason = "owner ruling of 9 October 2026: reviews use Sol low" }
-merge = { launcher = "native", model = "gpt-6.1-sol", effort = "low", reason = "owner ruling of 5 October 2026: Merges can go to Sol Low." }
-
-# Native (Codex) worker models. run-native-worker.sh refuses any other model,
-# and the refusal names this key.
-[launch_policy.native]
-native_models = "gpt-6-sol,gpt-6-luna,gpt-6-astra,gpt-6.1-sol"
-
-# Hosted OpenRouter presets that run-opencode-worker.sh routes through OpenRouter.
-# Local routes come from opencode_local_routes above and harness.toml [local_cluster].
+# The hosted OpenRouter presets come from the [routes.*] tables with
+# provider = "openrouter". The native Codex models come from the [routes.*]
+# tables on the codex harness. One place, one fact.
 [launch_policy.opencode_presets]
-openrouter_models = "openrouter/@preset/deepseek-flash,openrouter/@preset/deepseek-pro,openrouter/@preset/glm-5-3-flash-fast,openrouter/stealth/ox-alpha,openrouter/qwen/qwen3.7-flash"
 # The effort word that means the server's own setting. The launcher passes no --variant for it.
 server_default_effort = "default"
 # The time limit for a hosted worker with no OPENCODE_WORKER_TIME_LIMIT. A local route uses its own limit in harness.toml [local_cluster].
@@ -353,6 +304,52 @@ compaction_reserved = 20000
 # The CLI takes 100000 to 1000000 tokens. The launcher refuses any other value.
 claude_autocompact_tokens = 500000
 
-[health]
-# Added by repin: default from harness pin /home/jakej/gh/huly-platform-worktrees/huly-platform-pin-9054554 (90545543416a9a2702ef3c89999cf0967280e726).
-interval_minutes = 40
+# Optional [overflow] sends prepared implementation cards to the provider
+# worker's primary selection only when every listed local route is healthy
+# and full. Omit this table to use the default plan, whose provider, model and
+# efforts are the overflow_* keys in [orchestrator] above. An explicit table keeps
+# the destination shared with the provider worker policy, so a full local
+# cluster never moves work to a model that policy did not choose. bb is never a
+# trigger or an overflow destination.
+[overflow]
+roles = ["implementation"]
+# Owner ruling of 16 October 2026: local trigger lists are retired.
+# The retired spark route is documented in docs/local-cluster.md.
+# max_lanes and quota_floor are unset. There is no overflow lane limit.
+# Quota readings and quota_floor are information only.
+
+# The provider worker routing policy, shared with the overflow destination.
+# Owner, 9 October 2026: "Let's run Haiku via opencode and API key for workers
+# for a while, with Sol Low reviewers." Every board priority runs on the
+# primary selection. Owner ruling, 17 October 2026: "No fallback." Each role has
+# exactly one route, and a route that is down stops and asks, so there is no
+# fallback selection. A route-down marker refuses later launches on that route
+# until a Director removes it. The credential and marker paths stay shared
+# across projects.
+[provider_worker]
+priorities = ["0", "1", "2", "3", "4", "urgent", "high", "medium", "low", "none"]
+
+# Owner ruling, 17 October 2026: "deepseek v4.1 flash ... through opencode go as the worker replacing haiku in all projects".
+# Owner note, 17 October 2026: "Peak hours are 01:00 - 04:00 and 06:00 - 10:00 UTC for the upstream deepseek provider, when tokens cost double."
+[provider_worker.primary]
+launcher = "opencode"
+provider = "opencode-go"
+model = "opencode-go/deepseek-v4.1-flash"
+effort = "default"
+
+# The role-to-route choice for analysis, review and merge, beside the provider worker
+# selection. Each entry keeps the owner ruling it came from.
+[provider_worker.automatic_routes]
+analysis = { launcher = "opencode", model = "opencode-go/deepseek-v4.1-flash", effort = "default", reason = "owner ruling of 17 October 2026: deepseek v4.1 flash through opencode go replaces haiku as the worker" }
+review = { launcher = "native", model = "gpt-6.1-sol", effort = "low", reason = "owner ruling of 9 October 2026: reviews use Sol low" }
+merge = { launcher = "native", model = "gpt-6.1-sol", effort = "low", reason = "owner ruling of 5 October 2026: Merges can go to Sol Low." }
+
+# Owner note, 17 Oct 2026: "Peak hours are 01:00 - 04:00 and 06:00 - 10:00 UTC for the upstream deepseek provider, when tokens cost double."
+# A Director turns the pause on or off by changing pause and committing this file.
+# Nothing else changes: no card, no code, no restart. The table is read on every
+# launch decision, so the next launch after the commit follows the new value.
+# A project with no [peak_hours] table never pauses.
+[peak_hours]
+pause = true
+windows_utc = ["01:00-04:00", "06:00-10:00"]
+routes = ["opencode-go/deepseek-v4.1-flash"]
