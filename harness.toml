@@ -261,11 +261,6 @@ provider = "anthropic"
 model = "anthropic/claude-haiku-5-5"
 effort = "xhigh"
 
-[provider_worker.fallback]
-launcher = "claude"
-provider = "anthropic"
-model = "claude-haiku-5-5"
-effort = "xhigh"
 
 # Launch policy: the one place routing lives (owner ruling of 11
 # October 2026: "yes to toml"). The launch gates in policy/ and the route
