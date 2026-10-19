@@ -91,9 +91,10 @@ async function main() {
   }
   if (!process.send) throw new Error('Worker requires the local load driver')
   process.on('message', async request => {
-    if (request.stop) { board.close(); clearTimeout(timer); process.disconnect(); return }
+    if (request.stop) { board.close(); clearTimeout(timer); process.disconnect(); setTimeout(() => process.exit(0), 100); return }
+    timer.refresh()
     try { await run(request.operation, request); process.send({ done: true }) }
-    catch (error) { console.error(error.message); process.send({ done: true, failed: true }) }
+    catch (error) { console.error(error.message); process.send({ done: true, failed: true, fatal: /Incomplete .* fixture|Migration applied/.test(error.message) }) }
   })
   process.send({ ready: true })
 }

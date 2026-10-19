@@ -84,11 +84,14 @@ fi
 # Service readiness uses only the local config endpoint and account TCP port.
 docker exec "$runner" node /repo/dev/board-load/wait-ready.cjs
 exec_node 'worker.cjs' '{"mode":"smoke"}' > "$run_results/smoke.log" 2>&1
-for scenario in baseline stall-shared stall-separate shared mixed; do
+for scenario in ${BOARD_LOAD_SCENARIOS:-baseline stall-shared stall-separate shared mixed}; do
   printf 'Running %s\n' "$scenario"
   exec_node driver.cjs "$scenario" > "$run_results/$scenario-progress.log" 2>&1
   sleep 31
 done
+exec_node sql-diagnostics.cjs > "$run_results/sql-statistics.log" 2>&1
 # Flush the last per-phase inspector profile before shutting down the source transactor.
-exec_node summarize.cjs baseline.jsonl stall-shared.jsonl stall-separate.jsonl shared.jsonl mixed.jsonl | tee "$run_results/table.md"
+result_files=()
+for scenario in ${BOARD_LOAD_SCENARIOS:-baseline stall-shared stall-separate shared mixed}; do result_files+=("$scenario.jsonl"); done
+exec_node summarize.cjs "${result_files[@]}" | tee "$run_results/table.md"
 printf '%s\n' "$run_results" > "$folder/latest-results.local"

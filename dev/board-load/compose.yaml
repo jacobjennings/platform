@@ -41,6 +41,7 @@ services:
     environment:
       CUDA_VISIBLE_DEVICES: ''
       PROFILE_DIR: /profiles
+      PROFILE_SQL: ${PROFILE_SQL:-false}
       MODEL_JSON: /repo/pods/server/bundle/model.json
       DB_URL: postgresql://root@db:26257/profile?sslmode=disable
       SERVER_PORT: '3332'

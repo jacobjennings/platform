@@ -41,28 +41,37 @@ async function group(concurrency, separate = false, shared = false) {
 async function command(children, operation, extra = {}) {
   const waits = children.map(child => { const ready = wait(child); child.send({ operation, ...extra }); return ready })
   const results = await Promise.all(waits)
-  if (results.some(row => row.failed)) throw new Error(`${operation} failed, see ${samples}`)
+  if (results.some(row => row.fatal)) throw new Error(`${operation} fixture validation failed, see ${samples}`)
 }
 async function close(children) {
   await Promise.all(children.map(child => new Promise(resolve => { child.once('exit', resolve); child.send({ stop: true }) })))
 }
 async function main() {
-  if (fs.existsSync(samples)) throw new Error('Result file already exists, choose a new run name')
+  if (fs.existsSync(samples) && !process.env.BOARD_LOAD_RESUME) throw new Error('Result file already exists, choose a new run name')
   if (output === 'baseline') {
     for (const concurrency of [1, 4, 8, 16]) {
       const children = await group(concurrency)
       for (const operation of ['connect', 'ping', 'resolveTask', 'readProjectTasks', 'readSupervisionBoard', 'setTaskStage', 'postTaskComment', 'migrateStageLabelsToStatus']) {
+        const repeats = ['readSupervisionBoard', 'migrateStageLabelsToStatus'].includes(operation) ? 1 : 3
+        const existing = fs.existsSync(samples) ? fs.readFileSync(samples, 'utf8').trim().split('\n').filter(Boolean).map(line => JSON.parse(line)).filter(row => row.concurrency === concurrency && row.operation === operation).length : 0
+        if (existing >= repeats * concurrency) continue
         const label = `${output}-${concurrency}-${operation}`
         if (operation === 'migrateStageLabelsToStatus') execFileSync(process.execPath, [path.join(__dirname, 'prepare-migration.cjs'), 'reset'])
         await phase(label)
         console.log(new Date().toISOString(), label)
-        const repeats = ['readSupervisionBoard', 'migrateStageLabelsToStatus'].includes(operation) ? 1 : 3
-        for (let iteration = 0; iteration < repeats; iteration++) await command(children, operation, { iteration })
+        for (let iteration = Math.floor(existing / concurrency); iteration < repeats; iteration++) await command(children, operation, { iteration })
       }
       await close(children)
+      await phase('idle')
       // Avoid carrying a spent account budget into the next concurrency group.
       await sleep(31000)
     }
+  } else if (output === 'diagnostic') {
+    const children = await group(1)
+    await phase(output)
+    await command(children, 'readProjectTasks')
+    await command(children, 'readSupervisionBoard')
+    await close(children)
   } else if (output.startsWith('stall')) {
     const separate = output.includes('separate')
     const children = await group(16, separate, true)
