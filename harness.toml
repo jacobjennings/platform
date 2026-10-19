@@ -1,4 +1,4 @@
-# Harness pin: /home/jakej/gh/jake-harness-worktrees/huly-platform-pin-d765b05 (d765b05b0e)
+# Harness pin: /home/jakej/gh/huly-platform-worktrees/huly-platform-pin-9054554 (90545543416a9a2702ef3c89999cf0967280e726)
 # huly-platform (Huly fork, branch jj/activity-feed) settings for jake-harness. Read by every harness
 # script through HARNESS_CONFIG, or from harness.toml in the working directory
 # when unset. Deploys to huly.lan never run from the harness: they are an
@@ -45,6 +45,10 @@ node = "/home/jakej/.local/opt/node-22/bin/node"
 full_suite = "node common/scripts/install-run-rush.js test"
 typecheck = "node common/scripts/install-run-rush.js validate"
 setup = ["node common/scripts/install-run-rush.js install"]
+# Added by repin: default from harness pin /home/jakej/gh/huly-platform-worktrees/huly-platform-pin-9054554 (90545543416a9a2702ef3c89999cf0967280e726).
+deps_check = "test -d node_modules/typescript && echo DEPS_READY"
+# Added by repin: default from harness pin /home/jakej/gh/huly-platform-worktrees/huly-platform-pin-9054554 (90545543416a9a2702ef3c89999cf0967280e726).
+board_url = "http://127.0.0.1:9"
 
 [deploy]
 command = ""
@@ -114,7 +118,7 @@ review_guide = "docs/harness/review-guide.md"
 merge_guide = "docs/harness/merge-guide.md"
 
 [supervision]
-launcher_dir = "/home/jakej/gh/jake-harness-worktrees/huly-platform-pin-d765b05/launch"
+launcher_dir = "/home/jakej/gh/huly-platform-worktrees/huly-platform-pin-9054554/launch"
 role_index = "~/.cache/huly-platform/launcher/role-index.jsonl"
 waves_root = "~/.cache/huly-platform/waves"
 worktrees_root = "~/gh/huly-platform-worktrees"
@@ -123,12 +127,12 @@ policy_file = "harness.toml"
 token_file = "~/.cache/huly-platform/board-token"
 board_kind = "huly"
 board_url = "http://huly.lan"
-board_projects = ["HP"]
+board_projects = ["JH"]
 board_offline = false
 queued_label = 6
 review_queued_label = 9
 merge_queued_label = 10
-fallback_checker = "/home/jakej/gh/jake-harness-worktrees/huly-platform-pin-d765b05/policy/check-opencode-launch-policy.py"
+fallback_checker = "/home/jakej/gh/huly-platform-worktrees/huly-platform-pin-9054554/policy/check-opencode-launch-policy.py"
 floor_enabled = false
 floor_command = []
 ledger_file = "docs/harness/task-status.md"
@@ -189,13 +193,13 @@ state_dir = "~/.cache/huly-platform/orchestrator"
 role_index = "~/.cache/huly-platform/launcher/role-index.jsonl"
 tmux_session = "huly-platform"
 env_prefix = "HP"
-opencode_launcher = "/home/jakej/gh/jake-harness-worktrees/huly-platform-pin-d765b05/launch/run-opencode-worker.sh"
-native_launcher = "/home/jakej/gh/jake-harness-worktrees/huly-platform-pin-d765b05/launch/run-native-worker.sh"
-brief_checker = "/home/jakej/gh/jake-harness-worktrees/huly-platform-pin-d765b05/briefs/check-brief.py"
-opencode_policy_checker = "/home/jakej/gh/jake-harness-worktrees/huly-platform-pin-d765b05/policy/check-opencode-launch-policy.py"
+opencode_launcher = "/home/jakej/gh/huly-platform-worktrees/huly-platform-pin-9054554/launch/run-opencode-worker.sh"
+native_launcher = "/home/jakej/gh/huly-platform-worktrees/huly-platform-pin-9054554/launch/run-native-worker.sh"
+brief_checker = "/home/jakej/gh/huly-platform-worktrees/huly-platform-pin-9054554/briefs/check-brief.py"
+opencode_policy_checker = "/home/jakej/gh/huly-platform-worktrees/huly-platform-pin-9054554/policy/check-opencode-launch-policy.py"
 policy_file = "harness.toml"
-board_cli = "/home/jakej/gh/jake-harness-worktrees/huly-platform-pin-d765b05/board/huly-board-cli.cjs"
-board_scripts = "/home/jakej/gh/jake-harness-worktrees/huly-platform-pin-d765b05/supervision"
+board_cli = "/home/jakej/gh/huly-platform-worktrees/huly-platform-pin-9054554/board/huly-board-cli.cjs"
+board_scripts = "/home/jakej/gh/huly-platform-worktrees/huly-platform-pin-9054554/supervision"
 owner_git_name = "Jacob Jennings"
 owner_git_email = "jacob.r.jennings@gmail.com"
 worker_guide = "docs/harness/worker-guide.md"
@@ -208,7 +212,7 @@ deps_check = "test -d common/temp/node_modules && echo DEPS_READY"
 card_link_base = "http://huly.lan/workbench/hulyaccessevaluation/tracker/"
 board_project_prefix = "JH"
 board_project_id = "50dd160b-df21-dbe3-0911-f4002776abeb"
-harness_checkout = "/home/jakej/gh/jake-harness-worktrees/huly-platform-pin-d765b05"
+harness_checkout = "/home/jakej/gh/huly-platform-worktrees/huly-platform-pin-9054554"
 harness_repository = "git@github.com:jacobjennings/jake-harness.git"
 harness_review_model = "gpt-6.1-sol"
 # Branch reviews of this project (make-branch-review). Jake, 2026-10-09: "Let's run Haiku via opencode and API
@@ -348,3 +352,7 @@ compaction_reserved = 20000
 # Owner ruling of 12 October 2026: "the costs are so low with haiku I think we can afford a higher limit. Let's try 500k."
 # The CLI takes 100000 to 1000000 tokens. The launcher refuses any other value.
 claude_autocompact_tokens = 500000
+
+[health]
+# Added by repin: default from harness pin /home/jakej/gh/huly-platform-worktrees/huly-platform-pin-9054554 (90545543416a9a2702ef3c89999cf0967280e726).
+interval_minutes = 40
