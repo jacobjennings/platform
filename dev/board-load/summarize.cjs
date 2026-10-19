@@ -14,10 +14,10 @@ for (const file of files) {
   }
 }
 const percentile = (rows, p) => rows[Math.max(0, Math.ceil(rows.length * p) - 1)]
-console.log('| Run | Operation | Clients | n | p50 ms | p95 ms | Max ms | Errors | Partial |')
-console.log('| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |')
+console.log('| Run | Operation | Clients | n | p50 ms | p95 ms | Max ms | Errors | Partial | Censored |')
+console.log('| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |')
 for (const [key, rows] of groups) {
   const [run, operation, concurrency] = key.split('|')
   const times = rows.map(r => r.ms).sort((a,b) => a-b)
-  console.log(`| ${run} | ${operation} | ${concurrency} | ${rows.length} | ${percentile(times,.5).toFixed(1)} | ${percentile(times,.95).toFixed(1)} | ${times.at(-1).toFixed(1)} | ${rows.filter(r => !r.ok).length} | ${rows.filter(r => r.qualityOk === false || (r.operation === 'readSupervisionBoard' && r.nonemptyDescriptions !== undefined && r.nonemptyDescriptions < 6913)).length} |`)
+  console.log(`| ${run} | ${operation} | ${concurrency} | ${rows.length} | ${percentile(times,.5).toFixed(1)} | ${percentile(times,.95).toFixed(1)} | ${times.at(-1).toFixed(1)} | ${rows.filter(r => !r.ok).length} | ${rows.filter(r => r.qualityOk === false || (r.operation === 'readSupervisionBoard' && r.nonemptyDescriptions !== undefined && r.nonemptyDescriptions < 6913)).length} | ${rows.filter(r => r.censored).length} |`)
 }

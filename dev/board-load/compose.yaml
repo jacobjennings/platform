@@ -50,7 +50,7 @@ services:
       FULLTEXT_URL: http://unused-fulltext:4702
       COMMUNICATION_API_ENABLED: 'false'
       ENABLE_COMPRESSION: 'true'
-      RATE_LIMIT_MAX: '1500'
+      RATE_LIMIT_MAX: '${PROFILE_RATE_LIMIT_MAX:-1500}'
       RATE_LIMIT_WINDOW: '30000'
       QUEUE_CONFIG: queue:9092
   collaborator:

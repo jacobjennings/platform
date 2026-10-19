@@ -16,12 +16,17 @@ async function measure(operation, work) {
   const start = performance.now()
   const heartbeat = setInterval(() => fs.writeFileSync(`${resultsFolder}/heartbeat-${process.pid}.json`,
     JSON.stringify({ operation, lane: options.lane ?? 0, elapsedMs: performance.now() - start, ...diff(before) })), 5000)
-  let error, result, progress
-  try { result = await work() } catch (e) { error = String(e.message).split('\n')[0]; progress = e.progress }
+  let error, result, progress, censored
+  let deadline
+  const boundedWork = ['prime-connect','connect-after-exhaust'].includes(operation) ? () => Promise.race([work(), new Promise((_,reject) => {
+    deadline=setTimeout(()=>{const error=new Error('Connect probe exceeded eight minutes'); error.censored=true; reject(error)},480000)
+  })]) : work
+  try { result = await boundedWork() } catch (e) { error = String(e.message).split('\n')[0]; progress = e.progress; censored=e.censored }
+  clearTimeout(deadline)
   clearInterval(heartbeat)
   const row = { at: new Date().toISOString(), operation, lane: options.lane ?? 0,
-    concurrency: options.concurrency ?? 1, ...(operation === 'connect-after-exhaust' ? { overlappingWorkload: true } : {}), ms: performance.now() - start, ok: !error,
-    ...(error ? { error } : {}), ...(progress ? { progress } : {}), ...diff(before) }
+    concurrency: options.concurrency ?? 1, ...(['prime-connect','connect-after-exhaust'].includes(operation) ? { overlappingWorkload: true } : {}), ms: performance.now() - start, ok: !error,
+    ...(error ? { error } : {}), ...(censored ? { censored: true } : {}), ...(progress ? { progress } : {}), ...diff(before) }
   if (result !== undefined) row.resultJsonBytes = Buffer.byteLength(JSON.stringify(result))
   if (result?.rows) row.rows = result.rows.length
   if (result?.tasks) {
@@ -67,7 +72,8 @@ async function run(operation, request) {
     })
   }
   if (operation === 'exhaust') {
-    const connection = await nativeConnection(config)
+    let connection
+    await measure('prime-connect', async () => { connection = await nativeConnection(config) })
     let pending
     try {
       // More than 2 * 1500 rejects exercises the limiter's future-timestamp branch.
@@ -76,12 +82,13 @@ async function run(operation, request) {
       const started = performance.now()
       pending = Promise.all(Array.from({ length: 400 }, () =>
         connection.client.findAll(connection.tracker.class.Project, {}, { limit: 1, showArchived: true })))
+      pending.catch(() => {})
       await new Promise(resolve => setTimeout(resolve, 2000))
       await measure('connect-after-exhaust', async () => { const c = await nativeConnection(config); await c.client.close() })
       await pending
       await measure('read-after-exhaust', () => connection.client.findAll(connection.tracker.class.Project, {}, { limit: 1, showArchived: true }))
       const row = { at: new Date().toISOString(), operation: 'exhaust-queries', lane: options.lane ?? 0,
-        concurrency: options.concurrency ?? 1, ...(operation === 'connect-after-exhaust' ? { overlappingWorkload: true } : {}), ms: performance.now() - started, ok: true, overlappingConnect: true, ...diff(before) }
+        concurrency: options.concurrency ?? 1, ...(['prime-connect','connect-after-exhaust'].includes(operation) ? { overlappingWorkload: true } : {}), ms: performance.now() - started, ok: true, overlappingConnect: true, ...diff(before) }
       process.send(row)
     } finally { await connection.client.close() }
     return

@@ -135,7 +135,9 @@ write was automatically replayed. The raw baseline has exactly 580 attempts.
 
 Durations are milliseconds. Partial means a returned full card list with
 missing description content. A fully readable VK8 fixture returns 6,913
-nonempty descriptions among 6,914 cards.
+nonempty descriptions among 6,914 cards. The initial one-client run did not
+record nonempty description counts, so its partial-response column is unknown
+rather than a quality guarantee.
 
 | Run | Operation | Clients | n | p50 ms | p95 ms | Max ms | Errors | Partial |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -215,8 +217,10 @@ remain ignored and local.
 
 Every completed model load returned 2,067,856 bytes as decoded JSON. A typical
 binary protocol model message was about 1,346,110 bytes before websocket framing.
-The one-client model response median is measured in the raw samples. Later
-instrumentation also preserves total wait across retries and records hello time.
+The first one- and four-client instrumentation timed the last model attempt.
+Later
+instrumentation preserves total wait across retries and records hello time.
+The connect elapsed times always include the complete wait.
 
 The source explains two distinct throttling hazards. The sliding limiter inserts
 requests 150 seconds into the future once rejectedRequests exceeds twice the

@@ -26,10 +26,16 @@ cleanup() {
   # Only resources explicitly recorded for this invocation are touched.
   while IFS= read -r cid; do
     test -n "$cid" || continue
+    if [[ "$cid" == "${runner:-}" ]]; then continue; fi
     docker logs "$cid" > "$run_results/container-$cid.log" 2>&1 || true
     docker stop --time 30 "$cid" >/dev/null 2>&1 || true
     docker rm "$cid" >/dev/null 2>&1 || true
   done < <(sort -u "$ids")
+  if test -n "${runner:-}"; then
+    docker exec --user 0 "$runner" chown -R "$(id -u):$(id -g)" "$runner_results" "$runner_state" >/dev/null 2>&1 || true
+    docker stop --time 30 "$runner" >/dev/null 2>&1 || true
+    docker rm "$runner" >/dev/null 2>&1 || true
+  fi
   if test -s "$run_state/network-id"; then docker network rm "$(cat "$run_state/network-id")" >/dev/null 2>&1 || true; fi
   printf 'Local state: %s\nResults: %s\n' "$run_state" "$run_results"
   exit "$result"
@@ -72,7 +78,7 @@ collection=$(tar -tf "$snapshot/cockroach-backup.tar" | sed -n '1s|/.*||p')
 docker exec "$db" ./cockroach sql --insecure -e "RESTORE DATABASE defaultdb FROM LATEST IN 'nodelocal://1/$collection' WITH new_db_name = 'profile'" > "$run_results/restore.log" 2>&1
 runner_state="/repo/${run_state#"$repo/"}"
 runner_results="/repo/${run_results#"$repo/"}"
-runner=$(docker create --runtime runc --network "${project}_default" -e CUDA_VISIBLE_DEVICES= -e "BOARD_LOAD_STATE=$runner_state" -e "BOARD_LOAD_RESULTS=$runner_results" -v "$repo:/repo" -w /repo --entrypoint /bin/sh hardcoreeng/transactor:v0.7.426 -c 'sleep 14400')
+runner=$(docker create --runtime runc --network "${project}_default" -e CUDA_VISIBLE_DEVICES= -e BOARD_LOAD_RUNNER=1 -e "BOARD_LOAD_STATE=$runner_state" -e "BOARD_LOAD_RESULTS=$runner_results" -v "$repo:/repo" -w /repo --entrypoint /bin/sh hardcoreeng/transactor:v0.7.426 -c 'sleep 14400')
 printf '%s\n' "$runner" >> "$ids"
 docker start "$runner" >/dev/null
 exec_node() { local script=$1; shift; docker exec "$runner" node "/repo/dev/board-load/$script" "$@"; }
@@ -89,7 +95,12 @@ fi
 # Service readiness uses only the local config endpoint and account TCP port.
 docker exec "$runner" node /repo/dev/board-load/wait-ready.cjs
 exec_node 'worker.cjs' '{"mode":"smoke"}' > "$run_results/smoke.log" 2>&1
-for scenario in ${BOARD_LOAD_SCENARIOS:-baseline stall-shared stall-separate shared mixed}; do
+for scenario in ${BOARD_LOAD_SCENARIOS:-baseline stall-shared stall-separate stall-raised shared mixed}; do
+  rate_limit=1500
+  if [[ "$scenario" == stall-raised ]]; then rate_limit=1000000; fi
+  PROFILE_RATE_LIMIT_MAX=$rate_limit "${compose[@]}" up -d --no-deps --force-recreate transactor > "$run_results/reset-$scenario.log" 2>&1
+  "${compose[@]}" ps -aq >> "$ids"
+  docker exec "$runner" node /repo/dev/board-load/wait-ready.cjs
   printf 'Running %s\n' "$scenario"
   exec_node driver.cjs "$scenario" > "$run_results/$scenario-progress.log" 2>&1
   sleep 31
@@ -104,6 +115,6 @@ exec_node driver.cjs diagnostic > "$run_results/diagnostic-progress.log" 2>&1
 exec_node sql-diagnostics.cjs > "$run_results/sql-plans.log" 2>&1
 # Flush the last per-phase inspector profile before shutting down the source transactor.
 result_files=()
-for scenario in ${BOARD_LOAD_SCENARIOS:-baseline stall-shared stall-separate shared mixed}; do result_files+=("$scenario.jsonl"); done
+for scenario in ${BOARD_LOAD_SCENARIOS:-baseline stall-shared stall-separate stall-raised shared mixed}; do result_files+=("$scenario.jsonl"); done
 exec_node summarize.cjs "${result_files[@]}" | tee "$run_results/table.md"
 printf '%s\n' "$run_results" > "$folder/latest-results.local"
