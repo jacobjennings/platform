@@ -24,3 +24,29 @@ setInterval(() => {
 }, 1000).unref()
 // Every local service has an explicit upper lifetime.
 setTimeout(() => process.exit(124), 4 * 60 * 60 * 1000).unref()
+const inspector = require('node:inspector')
+const profiler = new inspector.Session()
+profiler.connect()
+const post = (method, params = {}) => new Promise((resolve, reject) => profiler.post(method, params, (e, r) => e ? reject(e) : resolve(r)))
+let currentPhase
+let switching = false
+setInterval(async () => {
+  if (switching) return
+  let next
+  try { next = fs.readFileSync(`${folder}/phase`, 'utf8').trim() } catch { return }
+  if (next === currentPhase || !/^[a-zA-Z0-9_-]+$/.test(next)) return
+  switching = true
+  try {
+    if (currentPhase) {
+      const { profile } = await post('Profiler.stop')
+      fs.writeFileSync(`${folder}/${currentPhase}.cpuprofile`, JSON.stringify(profile))
+    } else {
+      await post('Profiler.enable')
+      await post('Profiler.setSamplingInterval', { interval: 10000 })
+    }
+    await post('Profiler.start')
+    currentPhase = next
+    fs.writeFileSync(`${folder}/phase-ready`, next)
+  } catch (error) { fs.appendFileSync(`${folder}/profiler-errors.log`, error.message + '\n') }
+  finally { switching = false }
+}, 100).unref()

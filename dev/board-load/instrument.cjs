@@ -4,7 +4,7 @@ const fs = require('node:fs')
 const Module = require('node:module')
 const { performance } = require('node:perf_hooks')
 const root = path.resolve(__dirname, '../..')
-const counters = { http: {}, rpc: {}, rateLimited: 0, model: [] }
+const counters = { http: {}, rpc: {}, rateLimited: 0, model: [], markup: { ok: 0, empty: 0, error: 0 }, httpFailed: 0 }
 const inc = (map, key) => { map[key] = (map[key] || 0) + 1 }
 const allowed = new Set(['config', 'account', 'collaborator', 'transactor'])
 function assertLocal(value) {
@@ -18,7 +18,10 @@ global.fetch = (url, options) => {
   let method = ''
   if (host === 'account' && options?.body) { try { method = JSON.parse(options.body).method || '' } catch {} }
   inc(counters.http, host + (method ? ':' + method : ''))
-  return originalFetch(url, options)
+  return originalFetch(url, options).then(response => {
+    if (!response.ok) counters.httpFailed++
+    return response
+  }, error => { counters.httpFailed++; throw error })
 }
 const { RPCHandler } = require(`${root}/foundations/core/packages/rpc/lib`)
 const serialize = RPCHandler.prototype.serialize
@@ -63,10 +66,27 @@ function loadBoard() {
 function snapshot() { return structuredClone(counters) }
 function diff(before) {
   const result = { http: {}, rpc: {}, rateLimited: counters.rateLimited - before.rateLimited,
-    model: counters.model.slice(before.model.length) }
+    model: counters.model.slice(before.model.length), httpFailed: counters.httpFailed - before.httpFailed,
+    markup: Object.fromEntries(Object.entries(counters.markup).map(([k,v]) => [k, v - before.markup[k]])) }
   for (const kind of ['http', 'rpc']) for (const [key, value] of Object.entries(counters[kind])) {
     if (value !== (before[kind][key] || 0)) result[kind][key] = value - (before[kind][key] || 0)
   }
   return result
 }
-module.exports = { root, loadBoard, snapshot, diff }
+function wrapConnection(connection) {
+  connection.client = new Proxy(connection.client, { get(target, key) {
+    const value = target[key]
+    if (typeof value !== 'function') return value
+    if (key !== 'fetchMarkup') return value.bind(target)
+    return async (...args) => {
+      try {
+        const answer = await value.apply(target, args)
+        if (!answer || answer === '{"type":"doc","content":[]}') counters.markup.empty++
+        else counters.markup.ok++
+        return answer
+      } catch (error) { counters.markup.error++; throw error }
+    }
+  } })
+  return connection
+}
+module.exports = { root, loadBoard, snapshot, diff, wrapConnection }
