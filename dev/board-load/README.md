@@ -97,5 +97,11 @@ done < /absolute/path/to/state/container-ids
 docker network rm "$(cat /absolute/path/to/state/network-id)"
 ```
 
+A separate-account run can expose pool starvation in asynchronous presence
+triggers. `debug-pool.cjs` inspects managed reservations through the local
+inspector after a stall. It does not change server state beyond a brief debugger
+pause. `collect-censored.cjs` is an emergency collector restricted to the
+dedicated Docker runner and the known separate-account scenario.
+
 Raw database snapshots, credentials, logs and profiles must stay local. The
 committed report contains aggregate measurements and draft follow-up work.

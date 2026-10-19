@@ -139,3 +139,27 @@ Acceptance: compare the same shared-account burst with separate local accounts
 and a raised local limit. Show connects, request counts, error rate and event loop
 delay. Verify that one migration cannot starve a health check. State the account
 provisioning and ongoing access-management cost before a production change.
+
+## Bound Postgres reservations across asynchronous presence triggers
+
+Problem: the separate-account load reached a second global stall with no
+rate-limit responses. CockroachDB showed ten idle transactor sessions. Read-only
+debugger inspection found ten SQL connections cached in managed client_async
+contexts and seven more managed contexts without a connection. The captured
+stack ran through OnUserStatus, syncChat, trigger findAll and ConnectionMgr.retry.
+New model loads could not obtain SQL capacity.
+
+Scope: the fork's postgres-base ConnectionInfo and ConnectionMgr lifecycle,
+server async transaction contexts and presence-trigger lookups. Trace the
+reservation cycle, then bound held reservations and release idle leases before
+waiting on work that can require the same pool. Preserve transaction semantics.
+Use explicit cancellation and admission control where needed. Increasing the
+pool alone is not an accepted fix for an unbounded reservation cycle.
+
+Acceptance: reproduce with the default ten-connection pool and sixteen distinct
+local users entering and leaving. Include fresh and existing contact records.
+Record managed contexts, held and free leases, SQL activity and blocked model
+loads. Verify that connects and health reads continue while presence triggers
+run, including after a client disconnects. Run the committed matrix and both
+shared- and separate-account bursts. Add focused reservation and cancellation
+tests under this follow-up card.
