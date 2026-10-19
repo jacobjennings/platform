@@ -6,8 +6,8 @@ Run from a fork checkout with Node 20 through 24, Go, curl and Docker available:
 bash dev/board-load/run.sh
 ```
 
-`BOARD_LOAD_NODE` selects the supported Node executable. Put its directory first
-on `PATH` too, because package scripts invoke `node`. `BOARD_LOAD_SNAPSHOT`
+`BOARD_LOAD_NODE` selects the supported Node executable. The runner puts its directory first
+on `PATH` because package scripts invoke `node`. `BOARD_LOAD_SNAPSHOT`
 selects a local snapshot directory. The default is
 `~/.local/state/jake-harness/huly-snapshot/`. The snapshot must contain
 `cockroach-backup.tar` and `minio-files.tar`. No production account file is used.
@@ -36,7 +36,9 @@ Percentiles use nearest rank. A one-sample percentile is that sample, so this is
 an exploratory baseline rather than a statistically precise tail estimate.
 The table includes failed attempt durations and an explicit error count.
 Operations run in a fixed sequence and share the account budget. There is a
-31 second cooldown between concurrency groups and scenarios.
+31 second cooldown between concurrency groups and scenarios. Fresh local account
+identities isolate later concurrency groups from a prior group's rejection history.
+Clients inside each group still share one account.
 
 `readProjectTasks` must return every JH fixture card. `readSupervisionBoard`
 reads VK8 and checks the snapshot count. No response documents are written into

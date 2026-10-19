@@ -7,7 +7,7 @@ const { root, loadBoard, snapshot, diff, wrapConnection } = require('./instrumen
 const { createBoard, nativeConnection } = loadBoard()
 const options = JSON.parse(process.argv[2] || '{}')
 const config = { native: true, offline: false, url: 'http://config:8080', root,
-  accounts: `${stateFolder}/account-${options.separate ? options.lane : 0}.json`, workspace: 'hulyaccessevaluation',
+  accounts: `${stateFolder}/account-${options.separate ? options.lane : (options.accountIndex ?? 0)}.json`, workspace: 'hulyaccessevaluation',
   project_identifier: 'JH', board_projects: ['JH', 'VK8'], stage_status_projects: ['JH', 'VK8'],
   number_floor: 1, pageSize: 50, timeout: 600000, shared: options.shared === true }
 const board = createBoard({ ...config, connect: async c => wrapConnection(await nativeConnection(c)) })
@@ -16,12 +16,12 @@ async function measure(operation, work) {
   const start = performance.now()
   const heartbeat = setInterval(() => fs.writeFileSync(`${resultsFolder}/heartbeat-${process.pid}.json`,
     JSON.stringify({ operation, lane: options.lane ?? 0, elapsedMs: performance.now() - start, ...diff(before) })), 5000)
-  let error, result
-  try { result = await work() } catch (e) { error = String(e.message).split('\n')[0] }
+  let error, result, progress
+  try { result = await work() } catch (e) { error = String(e.message).split('\n')[0]; progress = e.progress }
   clearInterval(heartbeat)
   const row = { at: new Date().toISOString(), operation, lane: options.lane ?? 0,
     concurrency: options.concurrency ?? 1, ms: performance.now() - start, ok: !error,
-    ...(error ? { error } : {}), ...diff(before) }
+    ...(error ? { error } : {}), ...(progress ? { progress } : {}), ...diff(before) }
   if (result !== undefined) row.resultJsonBytes = Buffer.byteLength(JSON.stringify(result))
   if (result?.rows) row.rows = result.rows.length
   if (result?.tasks) {

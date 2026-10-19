@@ -6,6 +6,8 @@ folder=$(cd "$(dirname "$0")" && pwd)
 repo=$(cd "$folder/../.." && pwd)
 cd "$repo"
 node_bin=${BOARD_LOAD_NODE:-node}
+node_bin=$(command -v "$node_bin")
+export PATH="$(dirname "$node_bin"):$PATH"
 snapshot=${BOARD_LOAD_SNAPSHOT:-"$HOME/.local/state/jake-harness/huly-snapshot"}
 test -f "$snapshot/cockroach-backup.tar"
 test -f "$snapshot/minio-files.tar"
@@ -54,6 +56,7 @@ fi
 # Record even partially created resources if Compose fails.
 if ! "${compose[@]}" up -d db queue > "$run_results/infra.log" 2>&1; then
   "${compose[@]}" ps -aq >> "$ids"
+  docker network inspect "${project}_default" --format '{{.Id}}' > "$run_state/network-id" 2>/dev/null || true
   exit 1
 fi
 "${compose[@]}" ps -aq >> "$ids"
@@ -78,6 +81,7 @@ exec_node grant-fixture.cjs > "$run_results/grant.log" 2>&1
 exec_node prepare-migration.cjs > "$run_results/migration-setup.log" 2>&1
 if ! "${compose[@]}" up -d account transactor collaborator config files > "$run_results/services.log" 2>&1; then
   "${compose[@]}" ps -aq >> "$ids"
+  docker network inspect "${project}_default" --format '{{.Id}}' > "$run_state/network-id" 2>/dev/null || true
   exit 1
 fi
 "${compose[@]}" ps -aq >> "$ids"

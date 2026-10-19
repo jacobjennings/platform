@@ -121,3 +121,19 @@ reads responsive during migrations.
 Acceptance: migrate disjoint 300-card slices at 1, 4, 8 and 16 clients. Compare
 request counts, completion time, read tail latency and conflict outcomes. Test a
 lost reply and prove the retry does not duplicate comments or mutations.
+
+## Give independent harness clients independent rate budgets
+
+Problem: independent launchers, sweeps and health checks currently spend the
+same account budget. One migration can delay unrelated readers and connections.
+
+Scope: the harness account selection and the fork's documented quota settings.
+Choose explicit service identities or supported per-client quotas. Preserve
+workspace membership and audit attribution. Treat raising RATE_LIMIT_MAX as an
+operational alternative that must be capacity-tested, rather than as proof that
+the underlying rejection behavior is correct. Do not modify existing secrets.
+
+Acceptance: compare the same shared-account burst with separate local accounts
+and a raised local limit. Show connects, request counts, error rate and event loop
+delay. Verify that one migration cannot starve a health check. State the account
+provisioning and ongoing access-management cost before a production change.

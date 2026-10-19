@@ -33,8 +33,8 @@ function launch(options) {
   return child
 }
 function wait(child) { return new Promise((resolve, reject) => child.queue.push({ resolve, reject })) }
-async function group(concurrency, separate = false, shared = false) {
-  const children = Array.from({ length: concurrency }, (_, lane) => launch({ lane, concurrency, separate, shared }))
+async function group(concurrency, separate = false, shared = false, accountIndex = 0) {
+  const children = Array.from({ length: concurrency }, (_, lane) => launch({ lane, concurrency, separate, shared, accountIndex }))
   await Promise.all(children.map(wait))
   return children
 }
@@ -50,7 +50,7 @@ async function main() {
   if (fs.existsSync(samples) && !process.env.BOARD_LOAD_RESUME) throw new Error('Result file already exists, choose a new run name')
   if (output === 'baseline') {
     for (const concurrency of [1, 4, 8, 16]) {
-      const children = await group(concurrency)
+      const children = await group(concurrency, false, false, [1,4,8,16].indexOf(concurrency))
       for (const operation of ['connect', 'ping', 'resolveTask', 'readProjectTasks', 'readSupervisionBoard', 'setTaskStage', 'postTaskComment', 'migrateStageLabelsToStatus']) {
         const repeats = ['readSupervisionBoard', 'migrateStageLabelsToStatus'].includes(operation) ? 1 : 3
         const existing = fs.existsSync(samples) ? fs.readFileSync(samples, 'utf8').trim().split('\n').filter(Boolean).map(line => JSON.parse(line)).filter(row => row.concurrency === concurrency && row.operation === operation).length : 0
