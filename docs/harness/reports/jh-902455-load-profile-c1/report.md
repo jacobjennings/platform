@@ -189,7 +189,9 @@ Measured median outgoing counts from the one-client sequence:
 | postTaskComment | 7 | 4 | 0 |
 | migrateStageLabelsToStatus, 300 cards | 2,849 | 56 | 0 |
 
-RPC sends include hello and loadModel. The four HTTP requests on a short call
+RPC sends include hello and loadModel. Each native connection also performs
+one websocket HTTP upgrade outside the fetch counter. These are application
+round trips, not TCP packet counts. The four fetch requests on a short call
 are config, login, selectWorkspace and getSocialIds. The JH read makes 194
 findAll sends after connection setup. The VK8 supervision read makes exactly
 one collaborator request per described card. Its 16 rate-limit responses are

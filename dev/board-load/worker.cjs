@@ -9,7 +9,7 @@ const options = JSON.parse(process.argv[2] || '{}')
 const config = { native: true, offline: false, url: 'http://config:8080', root,
   accounts: `${stateFolder}/account-${options.separate ? options.lane : (options.accountIndex ?? 0)}.json`, workspace: 'hulyaccessevaluation',
   project_identifier: 'JH', board_projects: ['JH', 'VK8'], stage_status_projects: ['JH', 'VK8'],
-  number_floor: 1, pageSize: 50, timeout: 600000, shared: options.shared === true }
+  number_floor: 1, pageSize: options.pageSize ?? 50, timeout: 600000, shared: options.shared === true }
 const board = createBoard({ ...config, connect: async c => wrapConnection(await nativeConnection(c)) })
 async function measure(operation, work) {
   const before = snapshot()
@@ -28,7 +28,12 @@ async function measure(operation, work) {
     concurrency: options.concurrency ?? 1, ...(['prime-connect','connect-after-exhaust'].includes(operation) ? { overlappingWorkload: true } : {}), ms: performance.now() - start, ok: !error,
     ...(error ? { error } : {}), ...(censored ? { censored: true } : {}), ...(progress ? { progress } : {}), ...diff(before) }
   if (result !== undefined) row.resultJsonBytes = Buffer.byteLength(JSON.stringify(result))
-  if (result?.rows) row.rows = result.rows.length
+  if (result?.rows) {
+    row.rows = result.rows.length
+    const canonical = value => Array.isArray(value) ? value.map(canonical) : value && typeof value === 'object'
+      ? Object.fromEntries(Object.keys(value).sort().map(key => [key,canonical(value[key])])) : value
+    row.rowsSha256 = require('node:crypto').createHash('sha256').update(JSON.stringify(canonical(result.rows))).digest('hex')
+  }
   if (result?.tasks) {
     row.tasks = result.tasks.length
     row.nonemptyDescriptions = result.tasks.filter(task => task.description.trim()).length

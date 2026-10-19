@@ -95,7 +95,7 @@ fi
 # Service readiness uses only the local config endpoint and account TCP port.
 docker exec "$runner" node /repo/dev/board-load/wait-ready.cjs
 exec_node 'worker.cjs' '{"mode":"smoke"}' > "$run_results/smoke.log" 2>&1
-for scenario in ${BOARD_LOAD_SCENARIOS:-baseline stall-shared stall-separate stall-raised shared mixed}; do
+for scenario in ${BOARD_LOAD_SCENARIOS:-baseline stall-shared stall-separate stall-raised shared mixed pages50 pages1000}; do
   rate_limit=1500
   if [[ "$scenario" == stall-raised ]]; then rate_limit=1000000; fi
   PROFILE_RATE_LIMIT_MAX=$rate_limit "${compose[@]}" up -d --no-deps --force-recreate transactor > "$run_results/reset-$scenario.log" 2>&1
@@ -115,6 +115,6 @@ exec_node driver.cjs diagnostic > "$run_results/diagnostic-progress.log" 2>&1
 exec_node sql-diagnostics.cjs > "$run_results/sql-plans.log" 2>&1
 # Flush the last per-phase inspector profile before shutting down the source transactor.
 result_files=()
-for scenario in ${BOARD_LOAD_SCENARIOS:-baseline stall-shared stall-separate stall-raised shared mixed}; do result_files+=("$scenario.jsonl"); done
+for scenario in ${BOARD_LOAD_SCENARIOS:-baseline stall-shared stall-separate stall-raised shared mixed pages50 pages1000}; do result_files+=("$scenario.jsonl"); done
 exec_node summarize.cjs "${result_files[@]}" | tee "$run_results/table.md"
 printf '%s\n' "$run_results" > "$folder/latest-results.local"

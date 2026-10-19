@@ -9,7 +9,7 @@ const percentile = (values, p) => {
 }
 const events = parse('event-loop.jsonl')
 const result = {}
-for (const name of process.argv.slice(2).length ? process.argv.slice(2) : ['baseline','stall-shared','stall-separate','stall-raised','shared','mixed','diagnostic']) {
+for (const name of process.argv.slice(2).length ? process.argv.slice(2) : ['baseline','stall-shared','stall-separate','stall-raised','shared','mixed','pages50','pages1000','diagnostic']) {
   const samples = parse(`${name}.jsonl`)
   if (!samples.length) continue
   const groups = new Map()

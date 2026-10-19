@@ -163,3 +163,20 @@ loads. Verify that connects and health reads continue while presence triggers
 run, including after a client disconnects. Run the committed matrix and both
 shared- and separate-account bursts. Add focused reservation and cancellation
 tests under this follow-up card.
+
+## Increase validated page sizes in the harness
+
+Problem: the current 50-row page size multiplies cursor walks, catch-up reads,
+rechecks and exact-count queries. The existing client already accepts a pageSize
+configuration value. This profiling card measures a larger-page variant without
+changing the copied client or shipping a production configuration change.
+
+Scope: the harness configuration and client page contracts. Select a supported
+page size from the paired measurements. Retain complete cursor walks, move
+catch-up, permission filtering and id rechecks. Bound response size and memory.
+Do not silently accept a server cap smaller than the requested page size.
+
+Acceptance: identical canonical hashes for all 2,430 JH cards, labels and status
+facts at both page sizes. Rerun 1, 4, 8 and 16 clients and record requests, payload
+bytes, errors and p95. Include moving-card and server-cap cases. State whether
+the caller already supplies a larger page size before claiming production savings.

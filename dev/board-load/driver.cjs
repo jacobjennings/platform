@@ -33,8 +33,8 @@ function launch(options) {
   return child
 }
 function wait(child) { return new Promise((resolve, reject) => child.queue.push({ resolve, reject })) }
-async function group(concurrency, separate = false, shared = false, accountIndex = 0) {
-  const children = Array.from({ length: concurrency }, (_, lane) => launch({ lane, concurrency, separate, shared, accountIndex }))
+async function group(concurrency, separate = false, shared = false, accountIndex = 0, pageSize = 50) {
+  const children = Array.from({ length: concurrency }, (_, lane) => launch({ lane, concurrency, separate, shared, accountIndex, pageSize }))
   await Promise.all(children.map(wait))
   return children
 }
@@ -66,6 +66,11 @@ async function main() {
       // Avoid carrying a spent account budget into the next concurrency group.
       await sleep(31000)
     }
+  } else if (output === 'pages50' || output === 'pages1000') {
+    const children = await group(output === 'pages50' ? 1 : 16, false, false, 0, output === 'pages50' ? 50 : 1000)
+    await phase(output)
+    for (let iteration=0;iteration<3;iteration++) await command(children,'readProjectTasks',{iteration})
+    await close(children)
   } else if (output === 'diagnostic') {
     const children = await group(1)
     await phase(output)

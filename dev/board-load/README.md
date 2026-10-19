@@ -58,7 +58,9 @@ checks every minute and one 1,000-card migration. Its three sweep rounds span at
 least four minutes. The rate-limit comparison issues 6,400 real project reads
 from sixteen clients, measures connects while the queries are outstanding, once with a dedicated shared account and
 once with sixteen separate accounts. Seventeen local identities keep the shared
-burst's future-dated rejection history out of the separate-account comparison. A persistent-session ping comparison is also saved. A raised-limit comparison
+burst's future-dated rejection history out of the separate-account comparison. A persistent-session ping comparison is also saved. Two larger-page diagnostic
+cases compare 50 rows with 1,000 rows. Canonical hashes verify the complete
+project result, including labels and status facts, without retaining its contents. A raised-limit comparison
 uses 1,000,000 requests per window as a local diagnostic. The runner recreates
 only its own transactor between scenarios so one scenario cannot poison the
 next. Connect probes have an eight-minute cutoff and report censored outcomes
