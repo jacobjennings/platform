@@ -1,0 +1,75 @@
+name: jh-902455-local
+services:
+  db:
+    image: cockroachdb/cockroach:latest-v24.2
+    runtime: runc
+    command: start-single-node --insecure --cache=512MiB --max-sql-memory=512MiB
+    ports: ['127.0.0.1:26268:26257']
+    volumes: ['./state/db:/cockroach/cockroach-data', './state/extern:/cockroach/cockroach-data/extern']
+  files:
+    image: jh-902455-minio:local
+    runtime: runc
+    command: server /data
+    env_file: ./state/secrets.env
+    volumes: ['./state/files:/data']
+  queue:
+    image: docker.redpanda.com/redpandadata/redpanda:v24.3.6
+    runtime: runc
+    command: [redpanda, start, --overprovisioned, --smp, '1', --memory, 512M, --reserve-memory, 0M, --node-id, '0', --check=false, --kafka-addr, '0.0.0.0:9092', --advertise-kafka-addr, 'queue:9092']
+  account:
+    image: hardcoreeng/account:v0.7.426
+    runtime: runc
+    env_file: ./state/secrets.env
+    volumes: ['../../:/repo:ro']
+    working_dir: /tmp
+    command: [node, /repo/pods/account/bundle/bundle.js]
+    environment:
+      CUDA_VISIBLE_DEVICES: ''
+      DB_URL: postgresql://root@db:26257/profile?sslmode=disable
+      ACCOUNT_PORT: '3000'
+      TRANSACTOR_URL: 'ws://transactor:3332;ws://transactor:3332;'
+      ACCOUNTS_URL: http://account:3000
+      FRONT_URL: http://config:8080
+      MAIL_URL: ''
+      QUEUE_CONFIG: queue:9092
+  transactor:
+    image: hardcoreeng/transactor:v0.7.426
+    runtime: runc
+    env_file: ./state/secrets.env
+    volumes: ['../../:/repo:ro', './results:/profiles']
+    working_dir: /tmp
+    command: [node, --cpu-prof, --cpu-prof-dir=/profiles, --require=/repo/dev/board-load/server-hook.cjs, /repo/pods/server/bundle/bundle.js]
+    stop_grace_period: 30s
+    environment:
+      CUDA_VISIBLE_DEVICES: ''
+      PROFILE_DIR: /profiles
+      MODEL_JSON: /repo/pods/server/bundle/model.json
+      DB_URL: postgresql://root@db:26257/profile?sslmode=disable
+      SERVER_PORT: '3332'
+      ACCOUNTS_URL: http://account:3000
+      FRONT_URL: http://config:8080
+      FULLTEXT_URL: http://unused-fulltext:4702
+      COMMUNICATION_API_ENABLED: 'false'
+      ENABLE_COMPRESSION: 'true'
+      RATE_LIMIT_MAX: '1500'
+      RATE_LIMIT_WINDOW: '30000'
+      QUEUE_CONFIG: queue:9092
+  collaborator:
+    image: hardcoreeng/collaborator:v0.7.426
+    runtime: runc
+    env_file: ./state/secrets.env
+    volumes: ['../../:/repo:ro']
+    working_dir: /tmp
+    command: [node, /repo/pods/collaborator/bundle/bundle.js]
+    environment:
+      CUDA_VISIBLE_DEVICES: ''
+      COLLABORATOR_PORT: '3078'
+      ACCOUNTS_URL: http://account:3000
+  config:
+    image: hardcoreeng/account:v0.7.426
+    runtime: runc
+    volumes: ['../../:/repo:ro']
+    command: [node, /repo/dev/board-load/config-server.cjs]
+networks:
+  default:
+    internal: true
