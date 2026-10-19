@@ -101,6 +101,17 @@ import { Workspace } from './workspace'
 const ticksPerSecond = 20
 const workspaceSoftShutdownTicks = 15 * ticksPerSecond
 
+interface SummaryKey {
+  user: string
+  service: string
+  requests: number
+  refusals: number
+  maxMs: number
+  p95Ms: number
+  sessions: number
+  helloNoRequest: number
+}
+
 const guestAccount = 'b6996120-416f-49cd-841e-e4a5d2e49c9b'
 
 const hangRequestTimeoutSeconds = 30
@@ -346,16 +357,6 @@ export class TSessionManager implements SessionManager {
   }
 
   private logMinuteSummary (): void {
-    interface SummaryKey {
-      user: string
-      service: string
-      requests: number
-      refusals: number
-      maxMs: number
-      p95Ms: number
-      sessions: number
-      helloNoRequest: number
-    }
     const keys = new Map<string, SummaryKey>()
     for (const stat of this.minuteRequestStats.drain()) {
       const key = stat.user + stat.service

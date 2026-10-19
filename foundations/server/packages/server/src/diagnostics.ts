@@ -207,7 +207,7 @@ export class EventLoopDelayMonitor {
       try {
         this.histogram = monitorEventLoopDelay({ resolution: 10 })
         this.histogram.enable()
-      } catch (err: any) {
+      } catch {
         this.histogram = undefined
       }
     }
