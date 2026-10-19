@@ -66,9 +66,10 @@ const clientPlugin = require(`${root}/foundations/core/packages/client/lib`).def
 const WebSocket = global.WebSocket
 setMetadata(clientPlugin.metadata.ClientSocketFactory, url => { assertLocal(url); return new WebSocket(url) })
 // Observe the existing connection's adaptive pacing without changing it.
-const connectionModule = require(`${root}/foundations/core/packages/client-resources/lib/connection`)
+const connectionPath = require.resolve(`${root}/foundations/core/packages/client-resources/lib/connection`)
+const connectionModule = require(connectionPath)
 const originalConnect = connectionModule.connect
-connectionModule.connect = (...args) => {
+const observedConnect = (...args) => {
   const connection = originalConnect(...args)
   const handle = connection.handleMsg
   connection.handleMsg = function (...values) {
@@ -86,6 +87,10 @@ connectionModule.connect = (...args) => {
   }
   return connection
 }
+// The compiled module exposes getters, so wrap its cached exports for consumers.
+require.cache[connectionPath].exports = new Proxy(connectionModule, { get(target, key) {
+  return key === 'connect' ? observedConnect : target[key]
+} })
 function loadBoard() {
   const file = path.join(__dirname, 'vendor/huly-board.cjs')
   let source = fs.readFileSync(file, 'utf8')
