@@ -76,6 +76,7 @@ runner=$(docker create --runtime runc --network "${project}_default" -e CUDA_VIS
 printf '%s\n' "$runner" >> "$ids"
 docker start "$runner" >/dev/null
 exec_node() { local script=$1; shift; docker exec "$runner" node "/repo/dev/board-load/$script" "$@"; }
+exec_node inspect-fixture.cjs > "$run_results/fixture-scale.log" 2>&1
 exec_node seed-accounts.cjs > "$run_results/accounts.log" 2>&1
 exec_node grant-fixture.cjs > "$run_results/grant.log" 2>&1
 exec_node prepare-migration.cjs > "$run_results/migration-setup.log" 2>&1

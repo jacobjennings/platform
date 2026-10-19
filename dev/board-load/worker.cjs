@@ -20,7 +20,7 @@ async function measure(operation, work) {
   try { result = await work() } catch (e) { error = String(e.message).split('\n')[0]; progress = e.progress }
   clearInterval(heartbeat)
   const row = { at: new Date().toISOString(), operation, lane: options.lane ?? 0,
-    concurrency: options.concurrency ?? 1, ms: performance.now() - start, ok: !error,
+    concurrency: options.concurrency ?? 1, ...(operation === 'connect-after-exhaust' ? { overlappingWorkload: true } : {}), ms: performance.now() - start, ok: !error,
     ...(error ? { error } : {}), ...(progress ? { progress } : {}), ...diff(before) }
   if (result !== undefined) row.resultJsonBytes = Buffer.byteLength(JSON.stringify(result))
   if (result?.rows) row.rows = result.rows.length
@@ -79,8 +79,9 @@ async function run(operation, request) {
       await new Promise(resolve => setTimeout(resolve, 2000))
       await measure('connect-after-exhaust', async () => { const c = await nativeConnection(config); await c.client.close() })
       await pending
+      await measure('read-after-exhaust', () => connection.client.findAll(connection.tracker.class.Project, {}, { limit: 1, showArchived: true }))
       const row = { at: new Date().toISOString(), operation: 'exhaust-queries', lane: options.lane ?? 0,
-        concurrency: options.concurrency ?? 1, ms: performance.now() - started, ok: true, overlappingConnect: true, ...diff(before) }
+        concurrency: options.concurrency ?? 1, ...(operation === 'connect-after-exhaust' ? { overlappingWorkload: true } : {}), ms: performance.now() - started, ok: true, overlappingConnect: true, ...diff(before) }
       process.send(row)
     } finally { await connection.client.close() }
     return

@@ -6,7 +6,7 @@ const fs = require('node:fs')
 const Module = require('node:module')
 const { performance } = require('node:perf_hooks')
 const root = path.resolve(__dirname, '../..')
-const counters = { http: {}, rpc: {}, rateLimited: 0, model: [], markup: { ok: 0, empty: 0, error: 0 }, httpFailed: 0, hello: [] }
+const counters = { http: {}, rpc: {}, rateLimited: 0, model: [], markup: { ok: 0, empty: 0, error: 0 }, httpFailed: 0, hello: [], pacingRequests: 0, pacingScheduledMs: 0, maxPacingMs: 0 }
 const inc = (map, key) => { map[key] = (map[key] || 0) + 1 }
 const allowed = new Set(['config', 'account', 'collaborator', 'transactor'])
 function assertLocal(value) {
@@ -65,6 +65,27 @@ const clientPlugin = require(`${root}/foundations/core/packages/client/lib`).def
 // Keep the normal binary/compression settings and reject other websocket hosts.
 const WebSocket = global.WebSocket
 setMetadata(clientPlugin.metadata.ClientSocketFactory, url => { assertLocal(url); return new WebSocket(url) })
+// Observe the existing connection's adaptive pacing without changing it.
+const connectionModule = require(`${root}/foundations/core/packages/client-resources/lib/connection`)
+const originalConnect = connectionModule.connect
+connectionModule.connect = (...args) => {
+  const connection = originalConnect(...args)
+  const handle = connection.handleMsg
+  connection.handleMsg = function (...values) {
+    const answer = handle.apply(this, values)
+    counters.maxPacingMs = Math.max(counters.maxPacingMs, this.slowDownTimer)
+    return answer
+  }
+  const send = connection.sendRequest
+  connection.sendRequest = function (...values) {
+    if (this.slowDownTimer > 0) {
+      counters.pacingRequests++
+      counters.pacingScheduledMs += this.slowDownTimer
+    }
+    return send.apply(this, values)
+  }
+  return connection
+}
 function loadBoard() {
   const file = path.join(__dirname, 'vendor/huly-board.cjs')
   let source = fs.readFileSync(file, 'utf8')
@@ -81,6 +102,7 @@ function loadBoard() {
 function snapshot() { return structuredClone(counters) }
 function diff(before) {
   const result = { http: {}, rpc: {}, rateLimited: counters.rateLimited - before.rateLimited,
+    pacingRequests: counters.pacingRequests - before.pacingRequests, pacingScheduledMs: counters.pacingScheduledMs - before.pacingScheduledMs, maxPacingMs: counters.maxPacingMs,
     model: counters.model.slice(before.model.length), hello: counters.hello.slice(before.hello.length), httpFailed: counters.httpFailed - before.httpFailed,
     markup: Object.fromEntries(Object.entries(counters.markup).map(([k,v]) => [k, v - before.markup[k]])) }
   for (const kind of ['http', 'rpc']) for (const [key, value] of Object.entries(counters[kind])) {

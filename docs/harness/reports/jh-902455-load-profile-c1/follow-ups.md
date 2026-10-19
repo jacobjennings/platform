@@ -14,7 +14,9 @@ Scope: the fork's sliding limiter, session rate-limit response and client retry
 handling. Separate the policy choice about quotas from correctness. A rejected
 request must not consume new capacity or extend the observation window into the
 future. Publish bounded retry delays and surface throttling in connect diagnostics.
-Retain the intended per-account policy unless the owner chooses a new quota model.
+Ensure client pacing decays on healthy responses. Its current decrease branch is
+unreachable at the normal 1,500-request limit because it is inside a remaining < 50
+guard. Retain the intended per-account policy unless the owner chooses a new quota model.
 
 Acceptance: reproduce the local shared-account burst before and after. Compare
 separate accounts. Check hello latency, loadModel latency, retry counts, recovery
