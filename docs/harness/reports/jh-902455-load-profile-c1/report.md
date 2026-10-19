@@ -20,7 +20,8 @@ matching `v0.7.426` runtime images. The browser UI was replaced by a config-only
 HTTP fixture. Fulltext and optional integrations were not started.
 
 The runtime reports Node `v22.19.0`, x64, 48 available CPUs and 188.05 GiB RAM.
-Builds used the supported local Node 22 toolchain. CockroachDB has a 512 MiB
+Builds used the supported local Node 22 toolchain. CockroachDB is `v24.2.10`,
+restoring a `v24.2.4` snapshot. It has a 512 MiB
 cache and 512 MiB SQL memory setting. Other services have no CPU or memory cap.
 These are local measurements, not predictions of the production host's capacity.
 
@@ -99,8 +100,9 @@ in `dev/board-load/run.sh`.
 
 The runner was created on the internal network with a bind mount of this
 worktree and a four-hour sleep. It ran `seed-accounts.cjs`, `grant-fixture.cjs`,
-`prepare-migration.cjs` and `worker.cjs` in smoke mode. Services were then started
-with the same Compose project and `driver.cjs baseline` drove the matrix.
+`prepare-migration.cjs`. Services were then started with the same Compose
+project. `worker.cjs` smoke mode verified the connection and fixture count before
+`driver.cjs baseline` drove the matrix.
 The runner and server have explicit lifetimes. Each operation has a forty-minute
 worker bound and each scenario a ninety-minute bound.
 

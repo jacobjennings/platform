@@ -30,6 +30,8 @@ for (const name of process.argv.slice(2).length ? process.argv.slice(2) : ['base
       totalRateResponses: rows.reduce((n,row)=>n+row.rateLimited,0),
       modelP50Ms: percentile(models.map(row=>row.ms),.5), modelP95Ms: percentile(models.map(row=>row.ms),.95),
       modelJsonBytes: [...new Set(models.map(row=>row.decodedJsonBytes))],
+      clientPacingP50Ms: percentile(rows.map(row=>row.pacingScheduledMs),.5),
+      clientPacingMaxMs: Math.max(0,...rows.map(row=>row.pacingScheduledMs || 0)),
       helloP50Ms: percentile(rows.flatMap(row=>row.hello || []).map(row=>row.ms),.5),
       descriptionsP50: percentile(rows.map(row=>row.nonemptyDescriptions),.5),
       markupErrors: rows.reduce((n,row)=>n+(row.markup?.error || 0),0),
