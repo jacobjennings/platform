@@ -359,8 +359,16 @@ export class TSessionManager implements SessionManager {
   private logMinuteSummary (): void {
     const keys = new Map<string, SummaryKey>()
     for (const stat of this.minuteRequestStats.drain()) {
-      const key = stat.user + stat.service
-      keys.set(key, { ...stat, sessions: 0, helloNoRequest: 0 })
+      keys.set(stat.key, {
+        user: stat.user,
+        service: stat.service,
+        requests: stat.requests,
+        refusals: stat.refusals,
+        maxMs: stat.maxMs,
+        p95Ms: stat.p95Ms,
+        sessions: 0,
+        helloNoRequest: 0
+      })
     }
     for (const ref of this.sessions.values()) {
       const key = this.rateLimitKey(ref.session)
