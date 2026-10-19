@@ -1,9 +1,11 @@
 'use strict'
+const stateFolder = process.env.BOARD_LOAD_STATE || `${__dirname}/state`
+const resultsFolder = process.env.BOARD_LOAD_RESULTS || `${__dirname}/results`
 const fs = require('node:fs')
 const path = require('node:path')
 const { fork, execFileSync } = require('node:child_process')
 const { setTimeout: sleep } = require('node:timers/promises')
-const folder = path.join(__dirname, 'results')
+const folder = resultsFolder
 const output = process.argv[2] || 'baseline'
 if (!/^[a-zA-Z0-9_-]+$/.test(output)) throw new Error('Invalid run name')
 const samples = path.join(folder, `${output}.jsonl`)

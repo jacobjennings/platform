@@ -1,0 +1,94 @@
+#!/usr/bin/env bash
+set -euo pipefail
+export CUDA_VISIBLE_DEVICES=
+export PUPPETEER_SKIP_DOWNLOAD=1
+folder=$(cd "$(dirname "$0")" && pwd)
+repo=$(cd "$folder/../.." && pwd)
+cd "$repo"
+node_bin=${BOARD_LOAD_NODE:-node}
+snapshot=${BOARD_LOAD_SNAPSHOT:-"$HOME/.local/state/jake-harness/huly-snapshot"}
+test -f "$snapshot/cockroach-backup.tar"
+test -f "$snapshot/minio-files.tar"
+mkdir -p "$folder/state" "$folder/results"
+run_state=$(mktemp -d "$folder/state/run.XXXXXX")
+run_results=$(mktemp -d "$folder/results/run.XXXXXX")
+export PROFILE_STATE=$run_state
+export PROFILE_RESULTS=$run_results
+project="board-load-$(basename "$run_state" | tr '[:upper:].' '[:lower:]-')"
+compose=(docker compose -p "$project" -f "$folder/compose.yaml")
+ids="$run_state/container-ids"
+: > "$ids"
+cleanup() {
+  result=$?
+  trap - EXIT INT TERM
+  # Only resources explicitly recorded for this invocation are touched.
+  while IFS= read -r cid; do
+    test -n "$cid" || continue
+    docker logs "$cid" > "$run_results/container-$cid.log" 2>&1 || true
+    docker stop --time 30 "$cid" >/dev/null 2>&1 || true
+    docker rm "$cid" >/dev/null 2>&1 || true
+  done < <(sort -u "$ids")
+  if test -s "$run_state/network-id"; then docker network rm "$(cat "$run_state/network-id")" >/dev/null 2>&1 || true; fi
+  printf 'Local state: %s\nResults: %s\n' "$run_state" "$run_results"
+  exit "$result"
+}
+trap cleanup EXIT
+trap 'exit 130' INT TERM
+if ! test -d common/temp/node_modules; then timeout 1200 "$node_bin" common/scripts/install-run-rush.js install > "$run_results/install.log" 2>&1; fi
+timeout 1200 "$node_bin" common/scripts/install-run-rush.js build --to @hcengineering/pod-server --to @hcengineering/pod-account --to @hcengineering/pod-collaborator --to @hcengineering/api-client --parallelism 8 > "$run_results/build.log" 2>&1
+timeout 300 "$node_bin" common/scripts/install-run-rush.js bundle --to @hcengineering/pod-server --to @hcengineering/pod-account --to @hcengineering/pod-collaborator --parallelism 8 > "$run_results/bundle.log" 2>&1
+"$node_bin" "$folder/prepare-secrets.cjs" "$run_state"
+mkdir -p "$run_state/extern"
+tar -xf "$snapshot/cockroach-backup.tar" -C "$run_state/extern"
+tar -xf "$snapshot/minio-files.tar" -C "$run_state"
+# MinIO images and prebuilt release binaries are no longer available on the
+# registries used by this fixture. Build the pinned source with the local Go toolchain.
+if ! docker image inspect jh-902455-minio:local >/dev/null 2>&1; then
+  mkdir -p "$run_state/minio-src" "$run_state/minio-image"
+  curl -fL --max-time 120 -o "$run_state/minio-source.tar.gz" https://codeload.github.com/minio/minio/tar.gz/refs/tags/RELEASE.2025-04-22T22-12-26Z > "$run_results/minio-download.log" 2>&1
+  tar -xf "$run_state/minio-source.tar.gz" --strip-components=1 -C "$run_state/minio-src"
+  (cd "$run_state/minio-src" && CGO_ENABLED=0 GOMAXPROCS=8 timeout 900 go build -o ../minio-image/minio .) > "$run_results/minio-build.log" 2>&1
+  printf 'FROM alpine:3.20\nCOPY minio /usr/bin/minio\nENTRYPOINT ["/usr/bin/minio"]\n' > "$run_state/minio-image/Dockerfile"
+  docker build -t jh-902455-minio:local "$run_state/minio-image" > "$run_results/minio-image.log" 2>&1
+fi
+# Record even partially created resources if Compose fails.
+if ! "${compose[@]}" up -d db queue > "$run_results/infra.log" 2>&1; then
+  "${compose[@]}" ps -aq >> "$ids"
+  exit 1
+fi
+"${compose[@]}" ps -aq >> "$ids"
+docker network inspect "${project}_default" --format '{{.Id}}' > "$run_state/network-id"
+db=$("${compose[@]}" ps -q db)
+for attempt in $(seq 1 30); do
+  if docker exec "$db" ./cockroach sql --insecure -e 'SELECT 1' >/dev/null 2>&1; then break; fi
+  sleep 1
+done
+# Discover the backup collection name from the supplied archive.
+collection=$(tar -tf "$snapshot/cockroach-backup.tar" | sed -n '1s|/.*||p')
+[[ "$collection" =~ ^[a-zA-Z0-9_-]+$ ]]
+docker exec "$db" ./cockroach sql --insecure -e "RESTORE DATABASE defaultdb FROM LATEST IN 'nodelocal://1/$collection' WITH new_db_name = 'profile'" > "$run_results/restore.log" 2>&1
+runner_state="/repo/${run_state#"$repo/"}"
+runner_results="/repo/${run_results#"$repo/"}"
+runner=$(docker create --runtime runc --network "${project}_default" -e CUDA_VISIBLE_DEVICES= -e "BOARD_LOAD_STATE=$runner_state" -e "BOARD_LOAD_RESULTS=$runner_results" -v "$repo:/repo" -w /repo --entrypoint /bin/sh hardcoreeng/transactor:v0.7.426 -c 'sleep 14400')
+printf '%s\n' "$runner" >> "$ids"
+docker start "$runner" >/dev/null
+exec_node() { local script=$1; shift; docker exec "$runner" node "/repo/dev/board-load/$script" "$@"; }
+exec_node seed-accounts.cjs > "$run_results/accounts.log" 2>&1
+exec_node grant-fixture.cjs > "$run_results/grant.log" 2>&1
+exec_node prepare-migration.cjs > "$run_results/migration-setup.log" 2>&1
+if ! "${compose[@]}" up -d account transactor collaborator config files > "$run_results/services.log" 2>&1; then
+  "${compose[@]}" ps -aq >> "$ids"
+  exit 1
+fi
+"${compose[@]}" ps -aq >> "$ids"
+# Service readiness uses only the local config endpoint and account TCP port.
+docker exec "$runner" node /repo/dev/board-load/wait-ready.cjs
+exec_node 'worker.cjs' '{"mode":"smoke"}' > "$run_results/smoke.log" 2>&1
+for scenario in baseline stall-shared stall-separate shared mixed; do
+  printf 'Running %s\n' "$scenario"
+  exec_node driver.cjs "$scenario" > "$run_results/$scenario-progress.log" 2>&1
+  sleep 31
+done
+# Flush the last per-phase inspector profile before shutting down the source transactor.
+exec_node summarize.cjs baseline.jsonl stall-shared.jsonl stall-separate.jsonl shared.jsonl mixed.jsonl | tee "$run_results/table.md"
+printf '%s\n' "$run_results" > "$folder/latest-results.local"

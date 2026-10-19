@@ -1,4 +1,6 @@
 'use strict'
+const stateFolder = process.env.BOARD_LOAD_STATE || `${__dirname}/state`
+const resultsFolder = process.env.BOARD_LOAD_RESULTS || `${__dirname}/results`
 const fs = require('node:fs')
 const path = require('node:path')
 const root = path.resolve(__dirname, '../..')
@@ -24,7 +26,7 @@ async function main() {
         "modifiedOn"=old."modifiedOn" FROM profile_migration_tasks old
         WHERE task._id=old._id AND task."workspaceId"=old."workspaceId"`)
     }
-    fs.writeFileSync(`${__dirname}/state/migration-ids.json`, JSON.stringify(ids))
+    fs.writeFileSync(`${stateFolder}/migration-ids.json`, JSON.stringify(ids))
     console.log(`Migration fixture: ${ids.length} disjoint cards, 300 per lane`)
   } finally { db.close() }
 }

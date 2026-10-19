@@ -1,17 +1,15 @@
-name: jh-902455-local
 services:
   db:
     image: cockroachdb/cockroach:latest-v24.2
     runtime: runc
     command: start-single-node --insecure --cache=512MiB --max-sql-memory=512MiB
-    ports: ['127.0.0.1:26268:26257']
-    volumes: ['./state/db:/cockroach/cockroach-data', './state/extern:/cockroach/cockroach-data/extern']
+    volumes: ['${PROFILE_STATE:-./state}/db:/cockroach/cockroach-data', '${PROFILE_STATE:-./state}/extern:/cockroach/cockroach-data/extern']
   files:
     image: jh-902455-minio:local
     runtime: runc
     command: server /data
-    env_file: ./state/secrets.env
-    volumes: ['./state/files:/data']
+    env_file: ${PROFILE_STATE:-./state}/secrets.env
+    volumes: ['${PROFILE_STATE:-./state}/files:/data']
   queue:
     image: docker.redpanda.com/redpandadata/redpanda:v24.3.6
     runtime: runc
@@ -19,7 +17,7 @@ services:
   account:
     image: hardcoreeng/account:v0.7.426
     runtime: runc
-    env_file: ./state/secrets.env
+    env_file: ${PROFILE_STATE:-./state}/secrets.env
     volumes: ['../../:/repo:ro']
     working_dir: /tmp
     command: [node, /repo/pods/account/bundle/bundle.js]
@@ -35,8 +33,8 @@ services:
   transactor:
     image: hardcoreeng/transactor:v0.7.426
     runtime: runc
-    env_file: ./state/secrets.env
-    volumes: ['../../:/repo:ro', './results:/profiles']
+    env_file: ${PROFILE_STATE:-./state}/secrets.env
+    volumes: ['../../:/repo:ro', '${PROFILE_RESULTS:-./results}:/profiles']
     working_dir: /tmp
     command: [node, --cpu-prof, --cpu-prof-dir=/profiles, --require=/repo/dev/board-load/server-hook.cjs, /repo/pods/server/bundle/bundle.js]
     stop_grace_period: 30s
@@ -57,7 +55,7 @@ services:
   collaborator:
     image: hardcoreeng/collaborator:v0.7.426
     runtime: runc
-    env_file: ./state/secrets.env
+    env_file: ${PROFILE_STATE:-./state}/secrets.env
     volumes: ['../../:/repo:ro']
     working_dir: /tmp
     command: [node, /repo/pods/collaborator/bundle/bundle.js]

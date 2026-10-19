@@ -1,4 +1,6 @@
 'use strict'
+const stateFolder = process.env.BOARD_LOAD_STATE || `${__dirname}/state`
+const resultsFolder = process.env.BOARD_LOAD_RESULTS || `${__dirname}/results`
 const fs = require('node:fs')
 const path = require('node:path')
 const crypto = require('node:crypto')
@@ -19,8 +21,8 @@ async function main() {
       await db.assignWorkspace(account, workspace.uuid, AccountRole.Owner)
       credentials.push({ agent: { email, password }, account })
     }
-    fs.writeFileSync(`${__dirname}/state/accounts.json`, JSON.stringify(credentials), { mode: 0o600 })
-    credentials.forEach((entry, i) => fs.writeFileSync(`${__dirname}/state/account-${i}.json`, JSON.stringify(entry), { mode: 0o600 }))
+    fs.writeFileSync(`${stateFolder}/accounts.json`, JSON.stringify(credentials), { mode: 0o600 })
+    credentials.forEach((entry, i) => fs.writeFileSync(`${stateFolder}/account-${i}.json`, JSON.stringify(entry), { mode: 0o600 }))
     console.log('Created 16 isolated local load accounts')
   } finally { close() }
 }

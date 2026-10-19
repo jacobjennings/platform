@@ -50,3 +50,12 @@ setInterval(async () => {
   } catch (error) { fs.appendFileSync(`${folder}/profiler-errors.log`, error.message + '\n') }
   finally { switching = false }
 }, 100).unref()
+// Enabled only for a separate diagnostic pass, after baseline timing.
+if (process.env.PROFILE_SQL === 'true') {
+  const seen = new Set()
+  globalThis.__boardProfileSql = (_connection, query, parameters) => {
+    if (!/^\s*SELECT\b/i.test(query) || seen.has(query)) return
+    seen.add(query)
+    fs.appendFileSync(`${folder}/sql-selects.jsonl`, JSON.stringify({ query, parameters }) + '\n', { mode: 0o600 })
+  }
+}

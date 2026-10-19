@@ -1,4 +1,6 @@
 'use strict'
+const stateFolder = process.env.BOARD_LOAD_STATE || `${__dirname}/state`
+const resultsFolder = process.env.BOARD_LOAD_RESULTS || `${__dirname}/results`
 // Local snapshot fixture setup. Membership is required even for workspace owners.
 const path = require('node:path')
 const fs = require('node:fs')
@@ -8,7 +10,7 @@ async function main() {
   const db = getDBClient('postgresql://root@db:26257/profile?sslmode=disable')
   try {
     const sql = await db.getClient()
-    const users = JSON.parse(fs.readFileSync(`${__dirname}/state/accounts.json`))
+    const users = JSON.parse(fs.readFileSync(`${stateFolder}/accounts.json`))
     for (const { account } of users) {
       await sql.unsafe('UPDATE space SET members = array_append(members, $1) WHERE "workspaceId" = $2 AND NOT members @> ARRAY[$1]::text[]',
         [account, '4663bf36-78fb-4c61-b3af-93a577fe844a'])

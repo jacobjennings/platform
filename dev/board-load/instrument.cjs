@@ -1,4 +1,6 @@
 'use strict'
+const stateFolder = process.env.BOARD_LOAD_STATE || `${__dirname}/state`
+const resultsFolder = process.env.BOARD_LOAD_RESULTS || `${__dirname}/results`
 const path = require('node:path')
 const fs = require('node:fs')
 const Module = require('node:module')
