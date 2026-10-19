@@ -175,15 +175,15 @@ reviewmerge_model = "gpt-6.1-sol"
 reviewmerge_effort = "low"
 reviewmerge_push_retries = 2
 reviewmerge_marker_lifetime_seconds = 300
-routes_hard = ["spark/qwen3.8-flash-next"]
-small_only_hosts = ["bb"]
 launcher_limit_hosts = ["spark"]
-default_preset = "spark/qwen3.8-flash-next"
 merge_preset = "none"
 laya_url = "http://laya.lan:8080"
 publish_script = "~/gh/jake-homelab/scripts/publish-report.sh"
 review_model = "gpt-6.1-sol"
 merge_train_model = "gpt-6.1-sol"
+overflow_provider = "openai"
+overflow_model = "gpt-6.1-sol"
+overflow_effort = "medium"
 overflow_effort_small = "low"
 # Moderate routes are not listed twice. They follow [fleet] tiers.moderate, the one list both
 # readers use (orch_config _moderate_routes), as in jake-harness origin/main. Jake, 2026-10-07:
