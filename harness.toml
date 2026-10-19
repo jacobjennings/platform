@@ -86,6 +86,20 @@ known_names = ["Huly", "Rush", "Svelte", "MongoDB", "Elasticsearch", "MinIO", "G
 process_markers = ["hp-fleet-block-start", "hp-fleet-block-end"]
 
 [launch]
+# Copied from jake-harness main [launch] on 19 Oct 2026 (JH-902454 launch refusals): keys the
+# current launch scripts read that this file lacked.
+bash_time_limit_ms = 1200000
+task_time_limit_ms = 1800000
+native_time_limit = "40m"
+capacity_wait_schedule = [2, 4, 8, 16]
+capacity_wait_total_minutes = 60
+worker_owned_git = false
+live_snapshot_interval = "15m"
+idle_window = "20m"
+ceiling_multiple = 3
+stall_window = "30m"
+tool_call_marker = "HARNESS_TOOL_CALL"
+remote_repository_roots = []
 board = "huly"
 waves_root = "~/.cache/huly-platform/waves"
 role_index = "~/.cache/huly-platform/launcher/role-index.jsonl"
