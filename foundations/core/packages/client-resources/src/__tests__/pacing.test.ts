@@ -264,7 +264,9 @@ describe('connection pacing after a spent budget', () => {
       await paced.conn.loadModel(0)
       const rejectedElapsed = Date.now() - rejectedAt
       expect(rejectedElapsed).toBeGreaterThanOrEqual(100)
-      expect(paced.conn.slowDownTimer).toBe(MAX_SLOW_DOWN_MS)
+      // The rejected response raises the delay, and its retry response lowers
+      // it again because the retried request was accepted.
+      expect(paced.conn.slowDownTimer).toBe(90)
 
       const after: number[] = []
       const delays: number[] = []
@@ -308,7 +310,7 @@ describe('connection pacing after a spent budget', () => {
         for (let write = 0; write < 2; write++) await paced.conn.tx(twoWrites[card][write])
       }
 
-      expect(paced.socket.count('findAll')).toBe(3 + 3 + 12 + 1)
+      expect(paced.socket.count('findAll')).toBe(3 + 12 + 1)
       expect(paced.socket.count('tx')).toBe(6)
       expect(paced.conn.slowDownTimer).toBe(0)
       expect(paced.scheduledMs).toBe(420)
