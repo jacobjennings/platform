@@ -358,15 +358,27 @@ export function getSchema (domain: string): Schema {
 const declaredSchemas: Record<string, Schema> = { ...domainSchemas }
 
 /**
+ * Schema fields whose single-field index made a measured board read slower on
+ * the restored JH snapshot, so the adapter leaves that index out. The
+ * supervision read went from 56.9 s to 490.3 s at one client with the activity
+ * index outside this list. See docs/reports/jh-902531-backlog-c1/report.md.
+ */
+export const schemaIndexExclusions: Record<string, string[]> = {
+  activity: ['attachedTo'],
+  task: ['space']
+}
+
+/**
  * The single-field indexes a domain schema declares with `index: true`, named
  * the way the postgres adapter has always named them: <domain>_<field>.
  */
 export function getSchemaIndexDefinitions (domain: string): DomainIndexDefinition[] {
   const schema = declaredSchemas[translateDomain(domain)] ?? defaultSchema
+  const excluded = new Set(schemaIndexExclusions[translateDomain(domain)] ?? [])
   const indexes: DomainIndexDefinition[] = []
   for (const key in schema) {
     const field = schema[key]
-    if (field.index) {
+    if (field.index && !excluded.has(key)) {
       indexes.push({ name: `${domain}_${key}`, columns: `"${key}"`, indexType: field.indexType })
     }
   }
