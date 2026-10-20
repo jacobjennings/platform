@@ -12,8 +12,8 @@ The supplied settings resolve this worktree to huly-platform and jj/activity-fee
 
 ## Applied findings
 
-- High severity, foundations/core/packages/client-resources/src/connection.ts:804. Aborting while waitOpenConnection is pending rejected a separate RequestPromise before any consumer awaited it. This could produce an unhandled rejection. The fix rejects that promise only after it enters the pending request map. The owning connection still rejects its open wait on closure.
-- Medium severity, foundations/core/packages/client-resources/src/connection.ts:826. A reconnect callback could finish awaiting its retry decision after closure or request completion. Its sendData callback lacked a final state check. The fix checks closure, cancellation and request identity immediately before sending.
+- High severity, foundations/core/packages/client-resources/src/connection.ts:798. Aborting while waitOpenConnection is pending rejected a separate RequestPromise before any consumer awaited it. This could produce an unhandled rejection. The fix rejects that promise only after it enters the pending request map. The owning connection still rejects its open wait on closure.
+- Medium severity, foundations/core/packages/client-resources/src/connection.ts:824. A reconnect callback could finish awaiting its retry decision after closure or request completion. Its sendData callback lacked a final state check. The fix checks closure, cancellation and request identity immediately before sending.
 
 These findings enforce the ReviewMerge guide rule, "Reject unsafe or wrong behavior and false claims about code or test results." The enforcing implementation is connection.ts. Existing cancellation.test.ts exercises connection closure and retry cancellation. No test was added or extended.
 
@@ -46,7 +46,7 @@ The existing harness caller must pass the new signal before it receives cancella
 
 ## Merge outcome
 
-The report was committed and pushed before the merge attempt. The required merge script exited 2 with `harness-reviewmerge: refused before any write: card repo lookup failed:`. The mandatory outcome step exited 2 with the same error. Neither step changed the board. No reviewmerge.json or gate-results.jsonl was produced. The raw install, targeted check, merge and outcome logs accompany this report.
+The report was committed and pushed before the merge attempt. The required merge script exited 2 with `harness-reviewmerge: refused before any write: card repo lookup failed:`. The mandatory outcome step exited 2 with the same error. Neither step changed the board. No reviewmerge.json or gate-results.jsonl was produced. The raw install, targeted check, merge and outcome logs are saved locally beside this report. They are ignored by Git.
 
 A separate explicit fetch of refs/heads/jj/activity-feed confirmed that the reviewed commit is not an ancestor of that target. The ancestry check exited 1. The merge did not happen. The Director needs to repair the card repository lookup used by the required merge path. This approval does not claim successful validation.
 
