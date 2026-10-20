@@ -41,6 +41,10 @@ async function measure(operation, work) {
     row.comments = result.tasks.reduce((n,t) => n + t.comments.length, 0)
   }
   if (result?.applied !== undefined) row.applied = result.applied
+  if (result?.pages !== undefined) row.pages = result.pages
+  if (result?.counts !== undefined) row.counts = result.counts
+  if (result?.changes !== undefined) row.changes = result.changes
+  if (result?.failures !== undefined) row.failures = result.failures
   if (process.send) process.send(row)
   else fs.appendFileSync(`${resultsFolder}/smoke.jsonl`, JSON.stringify(row) + '\n')
   if (error) throw new Error(`${operation}: ${error}`)
@@ -50,6 +54,7 @@ async function measure(operation, work) {
 // prove it returned the same set.
 let baselineIds = null
 let snapshotState = null
+let filteredQuery = null
 async function snapshotConnection () {
   if (snapshotState === null) {
     snapshotState = await nativeConnection(config)
@@ -87,11 +92,20 @@ async function filteredRead (client, cls, query, pageSize) {
   }
   return { rows: ids.filter(id => current.has(id)), pages: Math.ceil(walked.length / pageSize) }
 }
-async function filteredCardsQuery (client, tracker) {
-  const statuses = await client.findAll(tracker.class.IssueStatus,
-    { name: { $in: ['implementing', 'Ready for review'] } }, { showArchived: true })
-  if (statuses.length === 0) throw new Error('The filtered read found no fixture status')
-  return { status: { $in: statuses.map(status => status._id) } }
+async function filteredCardsQuery (client, tracker, space) {
+  // Pick the two statuses that hold the most cards of this project, so the
+  // filtered read is a real multi-page walk rather than a handful of rows.
+  if (filteredQuery === null) {
+    const statuses = await client.findAll(tracker.class.IssueStatus, {}, { showArchived: true })
+    const counts = []
+    for (const status of statuses) {
+      const rows = await client.findAll(tracker.class.Issue, { space, status: status._id }, { limit: 1, total: true, showArchived: true })
+      counts.push({ id: status._id, total: rows.total ?? rows.length })
+    }
+    counts.sort((a, b) => b.total - a.total)
+    filteredQuery = { status: { $in: counts.slice(0, 2).map(count => count.id) } }
+  }
+  return { space, ...filteredQuery }
 }
 
 // One page at a time from the server snapshot read. The card identities are
