@@ -46,7 +46,9 @@ The existing harness caller must pass the new signal before it receives cancella
 
 ## Merge outcome
 
-The required merge script has not completed yet. No merge is claimed.
+The report was committed and pushed before the merge attempt. The required merge script exited 2 with `harness-reviewmerge: refused before any write: card repo lookup failed:`. The mandatory outcome step exited 2 with the same error. Neither step changed the board. No reviewmerge.json or gate-results.jsonl was produced. The raw install, targeted check, merge and outcome logs accompany this report.
+
+A separate explicit fetch of refs/heads/jj/activity-feed confirmed that the reviewed commit is not an ancestor of that target. The ancestry check exited 1. The merge did not happen. The Director needs to repair the card repository lookup used by the required merge path. This approval does not claim successful validation.
 
 ## Failing after merge
 
