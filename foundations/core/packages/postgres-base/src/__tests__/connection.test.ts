@@ -44,9 +44,9 @@ class FakePool {
     }
   }
 
-  private acquire (): Promise<DBClient> {
+  private async acquire (): Promise<DBClient> {
     if (this.held < this.max) {
-      return Promise.resolve(this.lease())
+      return this.lease()
     }
     return await new Promise<DBClient>((resolve) => {
       this.waiters.push(resolve)
@@ -83,6 +83,10 @@ describe('ConnectionMgr reservations', () => {
     const pool = new FakePool(10)
     const mgr = new ConnectionMgr(pool.root(), { maxIdleLeases: 10, reserveTimeoutMs: 1000 })
 
+    // The server reserves a context before the transaction, as txRaw does.
+    mgr.getConnection('client_a', 'mgr', true)
+    mgr.getConnection('client_b', 'mgr', true)
+
     // Context A finishes a transaction and keeps its lease idle.
     await mgr.write('client_a', 'mgr', async () => {})
     expect(mgr.stats().idleLeases).toBe(1)
@@ -116,6 +120,7 @@ describe('ConnectionMgr reservations', () => {
     // manager keeps at most two and releases the rest.
     await Promise.all(
       Array.from({ length: 6 }, async (_, i) => {
+        mgr.getConnection(`client_${i}`, 'mgr', true)
         await mgr.write(`client_${i}`, 'mgr', async () => {})
       })
     )
@@ -155,7 +160,8 @@ describe('ConnectionMgr reservations', () => {
     )
 
     expect(pool.peak).toBeLessThanOrEqual(10)
-    expect(pool.statements).toBe(16 * 5 * 2)
+    // Each round runs one lookup, then BEGIN, UPDATE and COMMIT.
+    expect(pool.statements).toBe(16 * 5 * 4)
     expect(mgr.stats()).toEqual({ contexts: 0, idleLeases: 0, activeLeases: 0 })
     expect(pool.held).toBe(0)
   })
