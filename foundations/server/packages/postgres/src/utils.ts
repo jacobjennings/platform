@@ -37,6 +37,7 @@ import { type ParameterOrJSON } from 'postgres'
 import {
   addSchema,
   type DataType,
+  domainIndexDefinitions,
   getDocFieldsByDomains,
   getIndex,
   getSchema,
@@ -109,6 +110,34 @@ export async function createTables (
         loadedDomains.add(url + domain)
       }
     })
+  }
+
+  await createDomainIndexes(client, [...domainsToLoad, ...domainsToCreate])
+}
+
+/**
+ * Create the indexes that a query plan selected, for tables that already exist
+ * as well as new ones. CREATE INDEX IF NOT EXISTS makes this a catalog check on
+ * every later start. CockroachDB builds a new index online, so reads and writes
+ * continue during the build. A failure is reported and does not stop the
+ * workspace from attaching, the next start retries the build.
+ */
+async function createDomainIndexes (client: postgres.Sql, domains: string[]): Promise<void> {
+  for (const domain of domains) {
+    for (const index of domainIndexDefinitions[domain] ?? []) {
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          await client.unsafe(`CREATE INDEX IF NOT EXISTS ${index.name} ON ${domain} (${index.columns})`)
+          break
+        } catch (err: any) {
+          if (attempt === 3) {
+            console.warn(`Failed to create index ${index.name} on ${domain}`, err)
+          } else {
+            await new Promise((resolve) => setTimeout(resolve, 3000))
+          }
+        }
+      }
+    }
   }
 }
 
