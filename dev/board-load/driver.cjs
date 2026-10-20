@@ -91,7 +91,7 @@ async function main() {
   } else if (output === 'snapshot') {
     const children = await group(2, false, false, 0)
     await phase(output)
-    let moving = true
+    let moving = process.env.BOARD_LOAD_MOVER !== '0'
     const mover = (async () => {
       for (let iteration = 0; moving; iteration++) {
         await command([children[1]], iteration % 2 === 0 ? 'setTaskStage' : 'postTaskComment', { iteration })
