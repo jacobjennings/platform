@@ -101,6 +101,25 @@ fi
 "${compose[@]}" ps -aq >> "$ids"
 # Service readiness uses only the local config endpoint and account TCP port.
 docker exec "$runner" node /repo/dev/board-load/wait-ready.cjs
+# MEASUREMENT-ONLY (reverted after this run): wait for the workspace attach that
+# creates the schema indexes, which otherwise exceeds the smoke connect timeout.
+printf 'attach wait start %s\n' "$(date -u +%H:%M:%S)"
+previous=-1
+stable=0
+for attempt in $(seq 1 300); do
+  count=$(docker exec "$db" ./cockroach sql --insecure -d profile --format=tsv -e "SELECT count(*) FROM information_schema.statistics WHERE table_schema = 'public' AND index_name NOT LIKE '%_pkey'" 2>/dev/null | tail -1 | tr -d '[:space:]')
+  if [ "$count" = "$previous" ] && [ "${count:-0}" -ge 60 ]; then
+    stable=$((stable + 1))
+  else
+    stable=0
+  fi
+  if [ "$stable" -ge 3 ]; then
+    printf 'attach indexes stable at %s count %s %s\n' "$count" "$(date -u +%H:%M:%S)" "$(date -u +%H:%M:%S)"
+    break
+  fi
+  previous=$count
+  sleep 5
+done
 exec_node 'worker.cjs' '{"mode":"smoke"}' > "$run_results/smoke.log" 2>&1
 for scenario in ${BOARD_LOAD_SCENARIOS:-baseline stall-shared stall-separate stall-raised shared mixed pages50 pages1000}; do
   rate_limit=1500
