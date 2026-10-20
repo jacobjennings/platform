@@ -324,6 +324,9 @@ class ConnectionInfo {
       // so a wait is never queued behind idle reservations.
       this.host.releaseIdleLeases()
       reserved = await this.reserveWithTimeout()
+    }
+
+    if (reserved !== undefined) {
       this.host.beginActiveLease()
       counted = true
     }
@@ -339,7 +342,7 @@ class ConnectionInfo {
         if (counted) {
           this.host.endActiveLease()
         }
-        if (!this.released && this.managed && forced && this.host.tryHoldIdle()) {
+        if (!this.released && this.managed && forced && this.idle === undefined && this.host.tryHoldIdle()) {
           this.idle = reserved
         } else {
           releaseQuietly(reserved)
@@ -553,6 +556,7 @@ export class ConnectionMgr implements IdleLeaseHost {
         continue
       }
       cnts.delete(k)
+      conn.released = true
       try {
         conn.release()
       } catch (err: any) {
