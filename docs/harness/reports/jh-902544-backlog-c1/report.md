@@ -2,6 +2,41 @@
 
 Card: http://huly.lan/workbench/hulyaccessevaluation/tracker/JH-902544
 
+## Review correction
+
+The original measurement narrative below is retained as a historical record.
+Its claims of no read regression, isolated slowdown cause, complete final index
+sizes, and a verified transactor connection timeout fix are withdrawn.
+
+The database statement matrix used a shared host and a generated 190-statement
+set, while the adapter attempted 195 statements. It did not measure the three
+requested application revisions on an exclusive host. Its median sums are
+reproducible from matrix.jsonl, but they do not establish client read performance
+or justify which indexes should ship. The unchanged plans do not rule out cache,
+I/O, contention or application effects. No raw EXPLAIN ANALYZE captures are
+committed. The size table contains only eight indexes and rounds to MB. It is
+not the requested full list with bytes per index.
+
+The attach probe calls createTables, rather than a complete transactor attach.
+Its second getDBClient call shares the existing pool for the same URL. The
+second argument is a database name in this API, not connection options, so the
+claimed five second connect timeout was not configured. The saved output is
+consistent with createTables returning before index creation, but does not
+prove an independent connection or a full transactor attach without timeout.
+Catalog stability also cannot prove that every index build succeeded.
+
+The three gate rows report 82, 8 and 93 passing tests at commit
+2fab665d550a759421b894324902527952479f9c. They contain no raw runner logs,
+tested tree, input list or isolated-run provenance. These are worker-reported
+results, not independently verified passes or reusable gate records.
+
+The recommendations below are historical suggestions, not assigned follow-up
+work. This run declares no follow-on. The requested controlled client matrix,
+slowdown attribution and full byte inventory remain unproven. Deployment
+acceptance has not been established.
+
+## Original worker narrative
+
 ## Result
 
 The 195 index set from d66ec41654 does not make the measured board reads
