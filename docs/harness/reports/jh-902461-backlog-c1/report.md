@@ -117,8 +117,9 @@ call assertion (three calls in `api-client/src/__tests__/markup-client.test.ts`
 and one in `api-client/src/__tests__/utils.test.ts`). No assertion was
 weakened.
 
-Final run, whole files, one at a time, on
-`7c84af76da73864fb777aa74a2132e51e5e21323`:
+Final runs, whole files, one at a time, on the code of
+`7c84af76da73864fb777aa74a2132e51e5e21323` (the commits after it change only
+this report):
 
 | Test file | rc | Result |
 | --- | ---: | --- |
