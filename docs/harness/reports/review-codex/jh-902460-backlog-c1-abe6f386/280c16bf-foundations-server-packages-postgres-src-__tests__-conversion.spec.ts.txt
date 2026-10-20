@@ -1,0 +1,29 @@
+PASS src/__tests__/conversion.spec.ts
+  array conversion
+    ✓ should handle undefined parameters
+    ✓ should convert empty arrays
+    ✓ should handle string arrays with special characters
+    ✓ should handle null values
+    ✓ should handle mixed type arrays
+    ✓ should pass through non-array parameters
+  array decoding
+    ✓ should decode NULL to empty array
+    ✓ should decode empty array
+    ✓ should decode simple string array
+    ✓ should decode encoded string array (1 ms)
+    ✓ should decode array with quoted strings
+    ✓ should decode array with escaped quotes
+    ✓ should decode array with multiple escaped characters
+  query to sql conversion tests
+    ✓ check dummy db client
+    ✓ check simple update (2 ms)
+    ✓ check space update (1 ms)
+    ✓ check few documents update
+  projection
+    ✓ mixin query projection
+
+Test Suites: 1 passed, 1 total
+Tests:       18 passed, 18 total
+Snapshots:   0 total
+Time:        0.401 s
+Ran all test suites matching /conversion.spec.ts/i.

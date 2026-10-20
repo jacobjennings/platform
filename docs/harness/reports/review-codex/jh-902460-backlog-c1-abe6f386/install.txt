@@ -1,0 +1,52 @@
+The rush.json configuration requests Rush version 5.158.1
+Transforming /home/jakej/gh/huly-platform-worktrees/review-codex-jh-902460-backlog-c1-abe6f386/common/config/rush/.npmrc
+  --> "/home/jakej/gh/huly-platform-worktrees/review-codex-jh-902460-backlog-c1-abe6f386/common/temp/install-run/@microsoft+rush@5.158.1/.npmrc"
+Installing @microsoft/rush...
+npm warn Unknown project config "always-auth". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn deprecated read-package-json@2.1.2: This package is no longer supported. Please use @npmcli/package-json instead.
+npm warn deprecated readdir-scoped-modules@1.1.0: This functionality has been moved to @npmcli/fs
+npm warn deprecated debuglog@1.0.1: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
+npm warn deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+npm warn deprecated osenv@0.1.5: This package is no longer supported.
+npm warn deprecated glob@7.2.3: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+npm warn deprecated uuid@8.3.2: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
+npm warn deprecated tar@6.2.1: Old versions of tar are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+npm warn deprecated read-package-tree@5.1.6: The functionality that this package provided is now in @npmcli/arborist
+
+added 567 packages, and audited 568 packages in 29s
+
+102 packages are looking for funding
+  run `npm fund` for details
+
+42 vulnerabilities (2 low, 23 moderate, 16 high, 1 critical)
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues, run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+npm notice
+npm notice New minor version of npm available! 12.1.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice
+Successfully installed @microsoft/rush@5.158.1
+
+Invoking "rush install"
+-----------------------
+
+[33mYour version of Node.js (26.10.0) has not been tested with this release of Rush. Please consider installing a newer version of the "@microsoft/rush" package, or downgrading Node.js.
+[39m
+Found configuration in /home/jakej/gh/huly-platform-worktrees/review-codex-jh-902460-backlog-c1-abe6f386/rush.json
+
+
+[1mRush Multi-Project Build Tool 5.158.1[33m[39m[22m[36m - https://rushjs.io[39m
+Node.js version is 26.10.0 (pre-LTS)
+
+
+
+[31mERROR: Your dev environment is running Node.js version v26.10.0 which does not[39m
+[31mmeet the requirements for building this repository.  (The rush.json[39m
+[31mconfiguration requires nodeSupportedVersionRange=">=20.0.0 <25.0.0")[39m

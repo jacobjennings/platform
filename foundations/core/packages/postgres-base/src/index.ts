@@ -111,11 +111,12 @@ class PostgresClientReferenceImpl {
   constructor (
     readonly connectionString: string,
     client: postgres.Sql,
-    readonly onclose: () => void
+    readonly onclose: () => void,
+    maxIdleLeases: number = 5
   ) {
     this.count = 0
     this.client = client
-    this.mgr = new ConnectionMgr(createDBClient(this.client))
+    this.mgr = new ConnectionMgr(createDBClient(this.client), { maxIdleLeases })
   }
 
   url (): string {
@@ -226,9 +227,19 @@ export function getDBClient (
       fetch_types: doFetchTypes
     })
 
-    existing = new PostgresClientReferenceImpl(connectionString, sql, () => {
-      connections.delete(key)
-    })
+    const configuredMax = extraOptions.max ?? dbExtraOptions.max ?? 10
+    const poolMax = typeof configuredMax === 'number' && configuredMax > 0 ? configuredMax : 10
+
+    existing = new PostgresClientReferenceImpl(
+      connectionString,
+      sql,
+      () => {
+        connections.delete(key)
+      },
+      // Never let idle contexts hold more than half the pool. A transaction also
+      // releases those idle leases before it waits, so capacity is always free.
+      Math.floor(poolMax / 2)
+    )
     connections.set(key, existing)
   }
   // Add reference and return once closable
@@ -236,65 +247,204 @@ export function getDBClient (
   return new ClientRef(existing, existing.mgr)
 }
 
-class ConnectionInfo {
-  // It should preserve at least one available connection in pool, other connection should be closed
-  available: DBClient[] = []
+const DEFAULT_RESERVE_TIMEOUT_MS = 30_000
 
+export interface ConnectionMgrOptions {
+  // Idle reservations the manager may keep between calls. They are released as
+  // soon as a transaction needs capacity.
+  maxIdleLeases?: number
+  // How long a caller waits for a pool connection before the wait is cancelled.
+  reserveTimeoutMs?: number
+}
+
+export interface ConnectionMgrStats {
+  contexts: number
+  idleLeases: number
+  activeLeases: number
+}
+
+interface IdleLeaseHost {
+  tryHoldIdle: () => boolean
+  releaseIdleSlot: () => void
+  releaseIdleLeases: () => void
+  beginActiveLease: () => void
+  endActiveLease: () => void
+}
+
+function reserveTimeoutFromEnv (): number {
+  const raw = process.env.POSTGRES_RESERVE_TIMEOUT_MS
+  if (raw === undefined || raw === '') {
+    return DEFAULT_RESERVE_TIMEOUT_MS
+  }
+  const parsed = Number.parseInt(raw, 10)
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_RESERVE_TIMEOUT_MS
+}
+
+function releaseQuietly (client: DBClient): void {
+  try {
+    client.release()
+  } catch (err: any) {
+    console.error('failed to release', err)
+  }
+}
+
+class ConnectionInfo {
   released: boolean = false
+
+  private idle?: DBClient
 
   constructor (
     readonly connectionId: string,
     protected readonly client: DBClient,
     readonly managed: boolean,
-    readonly mgrId: string
+    readonly mgrId: string,
+    private readonly host: IdleLeaseHost,
+    private readonly reserveTimeoutMs: number
   ) {}
 
+  get hasIdle (): boolean {
+    return this.idle !== undefined
+  }
+
+  // A reservation is held only while an action runs. A transaction may keep one
+  // idle lease for the next call in the same context, but the manager releases
+  // all idle leases before it waits for capacity, so an idle context never
+  // starves a model load or any other transaction.
   async withReserve (action: (reservedClient: DBClient) => Promise<any>, forced: boolean = false): Promise<any> {
     let reserved: DBClient | undefined
+    let counted = false
 
-    // Check if we have at least one available connection and reserve one more if required.
-    if (this.available.length === 0) {
-      if (this.managed || forced) {
-        reserved = await this.client.reserve()
-      }
-    } else {
-      reserved = this.available.shift() as DBClient
+    if (this.idle !== undefined) {
+      // Reuse the lease this context already holds. It never waits for the pool.
+      reserved = this.idle
+      this.idle = undefined
+      this.host.releaseIdleSlot()
+    } else if (forced) {
+      // A transaction needs a connection of its own. Free every idle lease first,
+      // so a wait is never queued behind idle reservations.
+      this.host.releaseIdleLeases()
+      reserved = await this.reserveWithTimeout()
+    }
+
+    if (reserved !== undefined) {
+      this.host.beginActiveLease()
+      counted = true
     }
 
     try {
-      // Use reserved or pool
+      // Use reserved or pool. Reads use the pool and never hold a lease while idle.
       return await action(reserved ?? this.client)
     } catch (err: any) {
       console.error(err)
       throw err
     } finally {
-      if (this.released) {
-        try {
-          reserved?.release()
-        } catch (err: any) {
-          console.error('failed to release', err)
+      if (reserved !== undefined) {
+        if (counted) {
+          this.host.endActiveLease()
         }
-      } else if (reserved !== undefined) {
-        if (this.available.length > 0) {
-          reserved?.release()
+        if (!this.released && this.managed && forced && this.idle === undefined && this.host.tryHoldIdle()) {
+          this.idle = reserved
         } else {
-          this.available.push(reserved)
+          releaseQuietly(reserved)
         }
       }
     }
   }
 
-  release (): void {
-    for (const c of [...this.available]) {
-      c.release()
+  private async reserveWithTimeout (): Promise<DBClient> {
+    const pending = this.client.reserve()
+    let timer: ReturnType<typeof setTimeout> | undefined
+    try {
+      return await Promise.race([
+        pending,
+        new Promise<DBClient>((_resolve, reject) => {
+          timer = setTimeout(() => {
+            const err: any = new Error(
+              `Timed out after ${this.reserveTimeoutMs}ms waiting for a database connection`
+            )
+            err.name = 'ReserveTimeoutError'
+            reject(err)
+          }, this.reserveTimeoutMs)
+          timer.unref?.()
+        })
+      ])
+    } catch (err: any) {
+      // The reservation can still arrive after the timeout. Release it so a
+      // cancelled caller cannot leak a connection.
+      void pending.then(releaseQuietly, () => {})
+      throw err
+    } finally {
+      if (timer !== undefined) {
+        clearTimeout(timer)
+      }
     }
-    this.available = []
+  }
+
+  release (): void {
+    this.dropIdle()
+  }
+
+  dropIdle (): void {
+    if (this.idle !== undefined) {
+      const client = this.idle
+      this.idle = undefined
+      this.host.releaseIdleSlot()
+      releaseQuietly(client)
+    }
   }
 }
 
-export class ConnectionMgr {
+export class ConnectionMgr implements IdleLeaseHost {
   private readonly connections = new Map<string, ConnectionInfo>()
-  constructor (protected readonly client: DBClient) {}
+  private idleLeases = 0
+  private activeLeases = 0
+  private readonly maxIdleLeases: number
+  private readonly reserveTimeoutMs: number
+
+  constructor (protected readonly client: DBClient, options: ConnectionMgrOptions = {}) {
+    this.maxIdleLeases = Math.max(0, options.maxIdleLeases ?? 5)
+    this.reserveTimeoutMs = options.reserveTimeoutMs ?? reserveTimeoutFromEnv()
+  }
+
+  tryHoldIdle (): boolean {
+    if (this.idleLeases >= this.maxIdleLeases) {
+      return false
+    }
+    this.idleLeases++
+    return true
+  }
+
+  releaseIdleSlot (): void {
+    this.idleLeases = Math.max(0, this.idleLeases - 1)
+  }
+
+  releaseIdleLeases (): void {
+    for (const conn of this.connections.values()) {
+      conn.dropIdle()
+    }
+  }
+
+  beginActiveLease (): void {
+    this.activeLeases++
+  }
+
+  endActiveLease (): void {
+    this.activeLeases = Math.max(0, this.activeLeases - 1)
+  }
+
+  stats (): ConnectionMgrStats {
+    let idle = 0
+    for (const conn of this.connections.values()) {
+      if (conn.hasIdle) {
+        idle++
+      }
+    }
+    return {
+      contexts: this.connections.size,
+      idleLeases: idle,
+      activeLeases: this.activeLeases
+    }
+  }
 
   async write (id: string | undefined, mgrId: string, fn: (client: DBClient) => Promise<any>): Promise<void> {
     const backoffInterval = 25 // millis
@@ -406,6 +556,7 @@ export class ConnectionMgr {
         continue
       }
       cnts.delete(k)
+      conn.released = true
       try {
         conn.release()
       } catch (err: any) {
@@ -417,7 +568,7 @@ export class ConnectionMgr {
   getConnection (id: string, mgrId: string, managed: boolean = true): ConnectionInfo {
     let conn = this.connections.get(id)
     if (conn === undefined) {
-      conn = new ConnectionInfo(id, this.client, managed, mgrId)
+      conn = new ConnectionInfo(id, this.client, managed, mgrId, this, this.reserveTimeoutMs)
     }
     if (managed) {
       this.connections.set(id, conn)

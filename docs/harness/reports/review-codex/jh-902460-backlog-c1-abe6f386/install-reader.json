@@ -1,0 +1,1 @@
+{"evidence": "unavailable", "raw_path": "/tmp/jake-harness-workers/harness-brief-review-9rUQvt07/install-retry.log", "raw_sha256": "6c98f2f5d4a15ed0139c7933f5ec8f2d88cfb83422cc5a1735afdfdce5c23831", "reason": "selector did not return strict JSON", "result": "error", "spans": [], "summary": ""}
