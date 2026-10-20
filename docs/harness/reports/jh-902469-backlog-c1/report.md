@@ -137,6 +137,7 @@ the card asks for is only partly shown.
 
 Run 1's `shared` scenario sent 20 pings on the dedicated shared account.
 p50 was 2.2 ms, p95 3.8 ms, max 464.7 ms, with no errors and no throttling.
+Run 2 repeated it: p50 2.1 ms, p95 3.8 ms, max 476.4 ms.
 
 ## Workspace membership and audit attribution
 
