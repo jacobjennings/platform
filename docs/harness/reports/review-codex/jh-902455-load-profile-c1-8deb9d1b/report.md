@@ -103,16 +103,21 @@ Prose checker warnings from the first pass:
 "paragraph 22: paragraph-length: This paragraph has 99 words. The warning limit is 90."
 
 The long check paragraph was split. Director names the role assigned in the brief.
+Later checks also flagged paragraph lengths of 99 and 148 words. Those paragraphs were split.
+The possible-jargon warnings repeat on the quoted role name and on "The Failing".
+The latter refers to the required Failing after merge section.
 
 ## Could not check
 
 The review did not rerun the Docker workload or establish production capacity.
 The cleanup changes have syntax coverage and code review, without a new live fixture run.
+
 The worker report has no committed gate-results.jsonl to reuse.
 The source card's attachment comment was not read.
 No claim is made that the card has or lacks validation captures.
 The review evidence folder contains no images.
 No changed user interface needs a screenshot suggestion.
+
 Host-load controls and independently repeated comparisons remain absent.
 SQL execution plans, debugger snapshots and CPU tables were read as worker evidence rather than reproduced measurements.
 
@@ -123,10 +128,29 @@ They do not establish production speedups or repair the underlying pool and limi
 
 ## Merge outcome
 
-The final verdict is approved for the prescribed merge script.
-The merge has not yet been confirmed.
+The final report was committed and pushed as 269ea54a3f360beffe5dd8ce2f8a7e2b27b85c8e before the merge attempt.
+The prescribed merge script ran from the refreshed dedicated harness worktree.
+It exited 2 before any write with this exact error:
+
+harness-reviewmerge: refused before any write: card repo lookup failed:
+
+The required outcome command ran with the same settings and exited 2 with the same error.
+Repository lookup failed while the required offline board settings were active.
+
+Neither command produced a merge or changed the board.
+The outcome command could not deliver its result message.
+A fresh fetch and merge-base --is-ancestor returned 1 for the original reviewed tip against origin/jj/activity-feed.
+The source tip is not merged.
+The script never prepared a merge candidate or ran its named done command.
+
+It did not produce reviewmerge.json or gate-results.jsonl.
+There is no frozen_files line to quote.
+No frozen path was changed by this review.
+
+The separate reviewer-checks.jsonl and its raw log are copied beside this report.
+The Failing after merge list below is empty because no merge test ran.
+No manual merge or push to the target branch replaced the script.
 Board writes remain prohibited by this brief.
-The outcome command will use offline board settings.
 
 ## Failing after merge
 
