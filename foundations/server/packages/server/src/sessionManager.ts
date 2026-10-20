@@ -1384,22 +1384,25 @@ export class TSessionManager implements SessionManager {
     requestId: Request<any>['id'],
     service: Session,
     ws: ConnectionSocket,
-    rateLimit: RateLimitInfo | undefined
+    rateLimit: RateLimitInfo | undefined,
+    onResponse?: () => void
   ): ClientSessionCtx {
     const st = platformNow()
     return {
       ctx,
       pipeline,
       requestId,
-      sendResponse: (reqId, msg) =>
-        sendResponse(sendCtx, service, ws, {
+      sendResponse: async (reqId, msg) => {
+        await sendResponse(sendCtx, service, ws, {
           id: reqId,
           result: msg,
           time: platformNowDiff(st),
           bfst: this.now,
           queue: service.requests.size,
           rateLimit
-        }),
+        })
+        onResponse?.()
+      },
       sendPong: () => {
         ws.sendPong()
       },
@@ -1535,6 +1538,7 @@ export class TSessionManager implements SessionManager {
         totalMs
       })
     }
+    if (completed) this.connectTimings.requestCompleted(service.sessionId)
     if (completed && (method === 'findAll' || method === 'loadModel')) {
       const connectMs = this.connectTimings.complete(service.sessionId, finishedAt)
       if (connectMs !== undefined && connectMs >= this.slowConnectMs) {
@@ -1665,7 +1669,7 @@ export class TSessionManager implements SessionManager {
               { source, mode: 'websocket' },
               (callTx) =>
                 f.apply(service, [
-                  this.createOpContext(callTx, requestCtx, pipeline, request.id, service, ws, rateLimit),
+                  this.createOpContext(callTx, requestCtx, pipeline, request.id, service, ws, rateLimit, () => { completed = true }),
                   ...params
                 ]),
               {
@@ -1677,7 +1681,6 @@ export class TSessionManager implements SessionManager {
             )
           })
         )
-        completed = true
       } catch (err: any) {
         Analytics.handleError(err)
         if (LOGGING_ENABLED) {
@@ -1757,7 +1760,7 @@ export class TSessionManager implements SessionManager {
               { source, mode: 'rpc' },
               (callTx) =>
                 operation(
-                  this.createOpContext(callTx, requestCtx, pipeline, reqId, service, ws, rateLimitStatus),
+                  this.createOpContext(callTx, requestCtx, pipeline, reqId, service, ws, rateLimitStatus, () => { completed = true }),
                   rateLimitStatus
                 ),
               {
@@ -1768,7 +1771,6 @@ export class TSessionManager implements SessionManager {
             )
           })
         )
-        completed = true
       } catch (err: any) {
         Analytics.handleError(err)
         if (LOGGING_ENABLED) {
