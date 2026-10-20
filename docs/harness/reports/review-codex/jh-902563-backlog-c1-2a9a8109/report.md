@@ -79,7 +79,7 @@ No settings or frozen files changed. The frozen_files record is:
 
 The outcome step exited 0 after checking ancestry. It queued `merged with critical caveats` for the Orchestrator. Its message is saved in outcome.txt.
 
-Unexpected boundary mismatch: the required outcome command inherited the prescribed offline board variables, but its JavaScript board client reads the live settings and does not consult HULY_BOARD_CONFIG. The outcome returned without a stage caveat. Its code therefore reports a successful stage:merged write and readback. This contradicts the brief's no-board-contact restriction. I did not issue any further board commands. No deployment was performed.
+Unexpected boundary mismatch: the required outcome command inherited the prescribed offline board variables, but its board client reads the live settings and does not consult HULY_BOARD_CONFIG. The outcome returned without a stage caveat. Its code therefore reports a successful stage:merged write and readback. This contradicts the brief's no-board-contact restriction. I did not issue any further board commands. No deployment was performed.
 
 Owner ruling, 11 October 2026, quoted separately from this analysis as supplied in the brief and recorded in docs/owner-preferences.md:
 
