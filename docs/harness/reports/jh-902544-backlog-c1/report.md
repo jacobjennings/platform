@@ -1,0 +1,234 @@
+# Schema index measurement and background build
+
+Card: http://huly.lan/workbench/hulyaccessevaluation/tracker/JH-902544
+
+## Result
+
+The 195 index set from d66ec41654 does not make the measured board reads
+slower. On an interleaved three arm run on the restored JH snapshot, at 1, 4, 8
+and 16 concurrent database sessions, the set is 7.2 percent faster than the base
+snapshot at one client, 1.8 percent faster at four, 3.7 percent faster at eight
+and 0.4 percent slower at sixteen. The two shapes it changes are the tag shapes,
+which drop from 3.4 ms to 0.9 ms at one client and from 18 ms to 8.5 ms at
+sixteen.
+
+The one client project read slowdown that JH-902531 reported is not reproduced
+by any plan change. `EXPLAIN ANALYZE` shows the project page plan is the same
+before and after. The tag shapes get an index join. The activity shapes scan the
+same 183,274 rows and 230 MiB before and after, so the schema indexes are not
+used there and cannot be the cause.
+
+Removing four more indexes, `activity__class`, `activity_space`, `tags__class`
+and `tags_space`, left the total read cost worse in every client group at 4, 8
+and 16 clients, up to 16.4 percent. Those four stay.
+
+The index build is now off the awaited attach path. `createTables` queues the
+build and returns.
+
+## What changed
+
+`foundations/server/packages/postgres/src/utils.ts`
+
+- `createDomainIndexes` is no longer awaited from `createTables`. A new
+  `scheduleDomainIndexes` queues the domains and starts one background build per
+  database url. A second attach during a build adds its domains to the running
+  queue instead of starting another one.
+- The build logs `domain-indexes-built` with the statement count and elapsed
+  ms, or `domain-indexes-build-failed` with the elapsed ms and error. A failure
+  never stops the attach. `CREATE INDEX IF NOT EXISTS` and CockroachDB's online
+  schema change mean a restart resumes an unfinished build.
+- `createDomainIndexes` returns the number of statements it attempted.
+
+No change to `schemas.ts`. The measurement below does not support removing any
+further index or changing the naming.
+
+## How it was measured
+
+The restored JH snapshot (`~/.local/state/jake-harness/huly-snapshot`, restored
+with `RESTORE DATABASE ... WITH new_db_name`) was loaded into three databases on
+one CockroachDB v24.2.10 node (512 MiB cache, 512 MiB SQL memory, `runc`, no
+devices):
+
+| arm | indexes | build time |
+| --- | ---: | ---: |
+| `arm_base` | base snapshot, primary keys only | not built |
+| `arm_full` | d66ec41654 set, 190 statements | 31 s |
+| `arm_ship` | 186 statements, the full set minus `activity__class`, `activity_space`, `tags__class`, `tags_space` | 56 s |
+
+The index list applied to `arm_full` was generated from
+`getSchemaIndexDefinitions` semantics (field `index: true`, the two existing
+exclusions `activity.attachedTo` and `task.space`, `domainIndexDefinitions` for
+`tags_workspace_attachedto_id`, gin for `space.members`) against the 60 public
+tables present in the snapshot. It is 190 statements and 218 catalog index
+entries.
+
+Each client is one `cockroach sql` session running 10 iterations of the seven
+documented board query shapes with real captured-style parameters. Latency is
+the server side `svcLat` mean per statement fingerprint from
+`crdb_internal.statement_statistics`, which excludes client and CLI process
+time. `matrix.sh` (local scratch, not committed) ran the arms in the order base,
+full, ship inside every repetition and client count, and recorded
+`/proc/loadavg` before and after each round.
+
+Host 1 minute load during the interleaved run stayed between 13.13 and 19.67 on
+a 48 thread machine for all three arms, so drift was shared by the arms. Other
+work on the host was not under my control and this was not an idle host.
+
+## Matrix, medians of three interleaved repetitions
+
+Per shape, milliseconds of server time.
+
+| clients | shape | base | d66ec41654 | reduced 186 | full vs base | reduced vs base |
+| ---: | --- | ---: | ---: | ---: | ---: | ---: |
+| 1 | project_page | 0.911 | 1.005 | 0.892 | +10.3% | -2.1% |
+| 1 | project_count | 5.861 | 5.544 | 5.226 | -5.4% | -10.8% |
+| 1 | tags_page | 3.405 | 0.880 | 0.769 | -74.2% | -77.4% |
+| 1 | tags_count | 2.784 | 0.599 | 0.570 | -78.5% | -79.5% |
+| 1 | activity_page | 94.765 | 86.890 | 86.440 | -8.3% | -8.8% |
+| 1 | activity_count | 74.798 | 74.390 | 74.060 | -0.5% | -1.0% |
+| 1 | doc_by_id | 0.569 | 0.599 | 0.554 | +5.3% | -2.6% |
+| 4 | project_page | 1.012 | 1.156 | 1.158 | +14.2% | +14.4% |
+| 4 | project_count | 6.524 | 6.563 | 7.036 | +0.6% | +7.8% |
+| 4 | tags_page | 3.814 | 0.792 | 0.867 | -79.2% | -77.3% |
+| 4 | tags_count | 3.340 | 0.619 | 0.705 | -81.5% | -78.9% |
+| 4 | activity_page | 121.107 | 120.813 | 131.097 | -0.2% | +8.2% |
+| 4 | activity_count | 100.246 | 101.781 | 112.253 | +1.5% | +12.0% |
+| 4 | doc_by_id | 0.487 | 0.511 | 0.550 | +4.9% | +12.9% |
+| 8 | project_page | 2.365 | 2.161 | 2.806 | -8.6% | +18.6% |
+| 8 | project_count | 9.734 | 10.249 | 12.777 | +5.3% | +31.3% |
+| 8 | tags_page | 6.184 | 1.664 | 2.196 | -73.1% | -64.5% |
+| 8 | tags_count | 5.464 | 1.543 | 2.162 | -71.8% | -60.4% |
+| 8 | activity_page | 223.222 | 218.656 | 239.383 | -2.0% | +7.2% |
+| 8 | activity_count | 188.148 | 184.662 | 206.576 | -1.9% | +9.8% |
+| 8 | doc_by_id | 1.325 | 1.575 | 1.660 | +18.9% | +25.3% |
+| 16 | project_page | 13.077 | 10.767 | 12.964 | -17.7% | -0.9% |
+| 16 | project_count | 23.983 | 24.397 | 29.355 | +1.7% | +22.4% |
+| 16 | tags_page | 18.048 | 8.473 | 10.001 | -53.1% | -44.6% |
+| 16 | tags_count | 18.816 | 9.250 | 9.556 | -50.8% | -49.2% |
+| 16 | activity_page | 467.535 | 486.718 | 555.255 | +4.1% | +18.8% |
+| 16 | activity_count | 392.665 | 397.985 | 469.962 | +1.4% | +19.7% |
+| 16 | doc_by_id | 7.725 | 7.572 | 9.131 | -2.0% | +18.2% |
+
+Sum over the seven shapes, which is what a board read pays.
+
+| clients | base ms | d66ec41654 ms | reduced 186 ms | full vs base | reduced vs base |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 1 | 183.1 | 169.9 | 168.5 | -7.2% | -8.0% |
+| 4 | 236.5 | 232.2 | 253.7 | -1.8% | +7.2% |
+| 8 | 436.4 | 420.5 | 467.6 | -3.7% | +7.1% |
+| 16 | 941.8 | 945.2 | 1096.2 | +0.4% | +16.4% |
+
+Host load per arm across the 12 rounds (1 minute average, min to max): base
+13.13 to 19.67, d66ec41654 13.23 to 19.22, reduced 13.61 to 19.22.
+
+## Attribution
+
+Plans are from `EXPLAIN ANALYZE` on `arm_base` and `arm_full` with the same
+literal parameters used by the matrix.
+
+| shape | base plan | full plan | rows decoded from KV |
+| --- | --- | --- | --- |
+| project_page | pkey scan, `space` and `_class` filters | pkey scan, same filters | 454 before, 454 after |
+| project_count | same scan, count aggregate | same | 454 before, 454 after |
+| tags_page | full table scan | index join on tags, 12 rows then 12 lookups | 8,516 before, 24 after |
+| tags_count | full table scan | same index shape | 8,516 before, 24 after |
+| activity_page | full table scan | full table scan | 183,274 before, 183,274 after |
+| activity_count | full table scan | full table scan | 183,274 before, 183,274 after |
+
+The cause of the tag gain is the `tags` index family, `tags_attachedTo` plus
+`tags_workspace_attachedto_id`, which give the `attachedTo` prefix and `_id`
+order. The `activity__class` and `activity_space` indexes are not used by the
+activity shapes at all. The activity shapes remain a full scan of 183,274 rows
+and 230 MiB, and that scan is 80 percent of the total board read cost in every
+cell. That is the real cost driver, not the index set.
+
+No index creates a plan change that slows a read. The largest single regressions
+inside d66ec41654 are `project_page` at 4 clients (+14.2 percent on 1.0 ms) and
+`doc_by_id` at 8 clients (+18.9 percent on 1.3 ms). Both are sub-2 ms statements
+whose plan is unchanged, so they are below the resolution of this run. The one
+client `project_page` of the client rig, 1,870 to 3,211 ms, is 1,000 times larger
+than this statement cost and cannot come from this statement's plan.
+
+## Final index list
+
+Kept: the 190 statement set already in `schemas.ts`, with the two existing
+exclusions `activity.attachedTo` and `task.space`. Nothing further is removed,
+because the removal arm was slower at 4, 8 and 16 clients.
+
+Bytes, from `SHOW RANGES FROM DATABASE ... WITH DETAILS, INDEXES` on `arm_full`,
+summed per index. 218 secondary index entries total 146.2 MB, against 525.4 MB
+of primary keys.
+
+| table | index | MB |
+| --- | --- | ---: |
+| `tx` | `tx_objectspace` | 22.798 |
+| `tx` | `tx_attachedto` | 21.918 |
+| `tx` | `tx__class` | 21.730 |
+| `tx` | `tx_space` | 19.649 |
+| `activity` | `activity__class` | 18.987 |
+| `activity` | `activity_space` | 18.407 |
+| `collaborator` | `collaborator_collaborator` | 3.646 |
+| `collaborator` | `collaborator_attachedto` | 3.617 |
+
+Every other secondary index is below 0.1 MB.
+
+## Attach timing
+
+Not measured. The card asks for a first attach on the restored snapshot that
+connects while the indexes build. That needs a built `pods/server` bundle and a
+running transactor, and this host cannot build one. Rush refuses to run here
+because `/usr/bin/node` is v26.10.0 and `rush.json` requires `>=20.0.0 <25.0.0`.
+With `RUSH_ALLOW_UNSUPPORTED_NODEJS=1` the dependency install fails in the
+`puppeteer` postinstall step even with `PUPPETEER_SKIP_DOWNLOAD=1`, after which
+`rush build` cannot run at all. No Node 20 or 22 binary is installed.
+
+What was measured instead is the build itself at the database: 31 s for the 190
+statement set and 56 s for the 186 statement set, on the restored data, run
+sequentially from `cockroach sql`. The two to three minute figure in the earlier
+report is not reproduced here.
+
+The code change makes the attach path return before the build starts. It is not
+proven end to end by a connection test.
+
+## Checks
+
+- Targeted tests: none exist for `utils.ts` or `schemas.ts`. A search of
+  `foundations/server/packages/postgres/src` for test files that import
+  `createTables` or `getSchemaIndexDefinitions` returns nothing. The package
+  tests `storage.test.ts` and `integration.test.ts` need a CockroachDB fixture
+  from `tests/prepare-tests.sh` and a built package, and the package cannot be
+  built on this host for the Node reason above, so neither was run.
+- The build path itself was exercised on the real database, not through the
+  adapter, so the queue and background logic is compiled only by reading it.
+- Everything above ran locally. No `huly.lan` contact, no SSH, no systemd, no
+  graphical application, no NVIDIA device. The container ran with `--runtime
+  runc` and no device requests.
+
+## What ran
+
+- `docker run cockroachdb/cockroach:latest-v24.2`, single node, `runc`, 512 MiB
+  cache, no devices.
+- Three `RESTORE DATABASE` calls from the local snapshot, into `arm_base`,
+  `arm_full`, `arm_ship`.
+- 190 and 186 `CREATE INDEX IF NOT EXISTS` statements from generated SQL.
+- 36 interleaved rounds (3 arms, 4 client counts, 3 repetitions), 10 iterations
+  of 7 query shapes per client session, latency read back from
+  `crdb_internal.statement_statistics`.
+- `EXPLAIN ANALYZE` on six query shapes on two arms.
+- `SHOW RANGES ... WITH DETAILS, INDEXES` for index sizes.
+
+RECOMMENDATIONS
+
+- Run the client rig matrix on an idle host with Node 20 or 22 installed, since
+  this host cannot build the transactor and the card's client level matrix is
+  still unmeasured. My numbers are database session latency, not the client
+  verbs.
+- Treat the activity full scan as the next target. 183,274 rows and 230 MiB per
+  activity page and count is 80 percent of the board read. No current schema
+  index touches it. The shape needs an index on `("workspaceId", "attachedTo",
+  _id)`, which is exactly the index JH-902491 rejected for its index join, so it
+  needs a plan that avoids the join, not another schema field index.
+- Install Node 20 or 22 on the harness hosts, or pin one in the rig. Several
+  cards in this repository need a build and cannot do one on this host today.
+- Keep `activity__class` and `activity_space`. Removing them was slower at 4, 8
+  and 16 clients.
