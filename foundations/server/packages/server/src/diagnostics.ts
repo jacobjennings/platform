@@ -100,6 +100,7 @@ interface KeyAccumulator {
   requests: number
   refusals: number
   times: number[]
+  maxMs: number
 }
 
 /** Per user and service key request statistics for the one minute summary. */
@@ -109,7 +110,7 @@ export class MinuteRequestStats {
   private get (key: string, user: string, service: string): KeyAccumulator {
     let acc = this.keys.get(key)
     if (acc === undefined) {
-      acc = { key, user, service, requests: 0, refusals: 0, times: [] }
+      acc = { key, user, service, requests: 0, refusals: 0, times: [], maxMs: 0 }
       this.keys.set(key, acc)
     }
     return acc
@@ -118,6 +119,7 @@ export class MinuteRequestStats {
   request (key: string, user: string, service: string, timeMs: number): void {
     const acc = this.get(key, user, service)
     acc.requests++
+    acc.maxMs = Math.max(acc.maxMs, timeMs)
     if (acc.times.length < MAX_SAMPLES_PER_KEY) {
       acc.times.push(timeMs)
     }
@@ -136,7 +138,7 @@ export class MinuteRequestStats {
         service: acc.service,
         requests: acc.requests,
         refusals: acc.refusals,
-        maxMs: acc.times.length > 0 ? Math.max(...acc.times) : 0,
+        maxMs: acc.maxMs,
         p95Ms: percentile(acc.times, 95)
       })
     }

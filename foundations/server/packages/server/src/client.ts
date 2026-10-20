@@ -81,6 +81,7 @@ export class ClientSession implements Session {
   current: StatisticsElement = { find: 0, tx: 0 }
   // Diagnostics only: result count of the last find response per request id.
   requestResultCount = new Map<number | string, number>()
+  requestQuery = new Map<number | string, { class: string, queryKeys: string[] }>()
   mins5: StatisticsElement = { find: 0, tx: 0 }
   measures: { id: string, message: string, time: 0 }[] = []
 
@@ -210,6 +211,9 @@ export class ClientSession implements Session {
     query: DocumentQuery<T>,
     options?: FindOptions<T>
   ): Promise<void> {
+    if (ctx.requestId !== undefined) {
+      this.requestQuery.set(ctx.requestId, { class: _class, queryKeys: Object.keys(query) })
+    }
     const domain = ctx.pipeline.context.hierarchy.findDomain(_class) ?? ''
     if (domain === '') {
       // Unknown domain, send error
