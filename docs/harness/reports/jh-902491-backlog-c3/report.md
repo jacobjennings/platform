@@ -240,6 +240,8 @@ limiter stall above.
   1 suite. Run on the tip with `HULY_BOARD_CONFIG` and `VIKUNJA_BASE_URL`
   pointing at `http://127.0.0.1:9`.
 - The card names no test and no new test was written.
+- The gate runner named in the run rules, `gate/isolated_run.py`, is not in this
+  repository, so no gate record was produced.
 - `integration.test.ts` and `storage.test.ts` need a CockroachDB reachable at
   `DB_URL`, defaulting to `localhost:26258`. The stack's database is only on its
   internal Docker network, so they were not run.
@@ -252,6 +254,7 @@ limiter stall above.
 - `foundations/server/packages/postgres/src/schemas.ts`
 - `foundations/server/packages/postgres/src/utils.ts`
 - `docs/harness/reports/jh-902491-backlog-c3/report.md`
+- `docs/reports/jh-902491-backlog-c3/report.md` (pointer to the report above)
 
 The two adapter files are outside the card's named report path. The card asks
 for the index to be implemented through the adapter, and the postgres adapter is
