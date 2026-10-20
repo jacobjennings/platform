@@ -24,10 +24,13 @@ const document: CollaborativeDoc = {
 
 const source = 'blob-1' as Ref<Blob>
 
+let capturedSignal: AbortSignal | undefined
+
 function abortableFetch (): jest.Mock {
   return jest.fn(
     async (_url: string, init: RequestInit) =>
       await new Promise((_resolve, reject) => {
+        capturedSignal = init.signal ?? undefined
         init.signal?.addEventListener('abort', () => {
           const error = new Error('The operation was aborted')
           error.name = 'AbortError'
@@ -49,10 +52,14 @@ function wait (ms: number): Promise<void> {
 }
 
 describe('collaborator client cancellation', () => {
-  const originalFetch = global.fetch
+  const originalFetch = globalThis.fetch
+
+  beforeEach(() => {
+    capturedSignal = undefined
+  })
 
   afterEach(() => {
-    global.fetch = originalFetch
+    globalThis.fetch = originalFetch
     jest.restoreAllMocks()
   })
 
@@ -60,7 +67,7 @@ describe('collaborator client cancellation', () => {
     const fetchMock = jest.fn(async () => {
       throw new Error('network down')
     })
-    global.fetch = fetchMock as any
+    globalThis.fetch = fetchMock as any
 
     const controller = new AbortController()
     const client = getClient('ws' as any, 'token', 'http://collab.invalid')
@@ -76,7 +83,7 @@ describe('collaborator client cancellation', () => {
 
   it('aborts the in-flight description fetch and does not retry it', async () => {
     const fetchMock = abortableFetch()
-    global.fetch = fetchMock as any
+    globalThis.fetch = fetchMock as any
 
     const controller = new AbortController()
     const client = getClient('ws' as any, 'token', 'http://collab.invalid')
@@ -88,12 +95,12 @@ describe('collaborator client cancellation', () => {
     await wait(120)
 
     expect(fetchMock).toHaveBeenCalledTimes(1)
-    expect((fetchMock.mock.calls[0][1] as RequestInit).signal).toBe(controller.signal)
+    expect(capturedSignal).toBe(controller.signal)
   })
 
   it('does not replay a timed-out write after the caller aborts', async () => {
     const fetchMock = abortableFetch()
-    global.fetch = fetchMock as any
+    globalThis.fetch = fetchMock as any
 
     const controller = new AbortController()
     const client = getClient('ws' as any, 'token', 'http://collab.invalid')
@@ -109,7 +116,7 @@ describe('collaborator client cancellation', () => {
 
   it('does not start a batch read for an already cancelled call', async () => {
     const fetchMock = jest.fn()
-    global.fetch = fetchMock as any
+    globalThis.fetch = fetchMock as any
 
     const controller = new AbortController()
     controller.abort()
@@ -123,13 +130,16 @@ describe('collaborator client cancellation', () => {
   })
 
   it('passes the owning signal to a successful read', async () => {
-    const fetchMock = jest.fn(async () => okResponse({ content: { description: 'hello' } }))
-    global.fetch = fetchMock as any
+    const fetchMock = jest.fn(async (_url: string, init: RequestInit) => {
+      capturedSignal = init.signal ?? undefined
+      return okResponse({ content: { description: 'hello' } })
+    })
+    globalThis.fetch = fetchMock as any
 
     const controller = new AbortController()
     const client = getClient('ws' as any, 'token', 'http://collab.invalid')
 
     await expect(client.getMarkup(document, null, controller.signal)).resolves.toBe('hello')
-    expect((fetchMock.mock.calls[0][1] as RequestInit).signal).toBe(controller.signal)
+    expect(capturedSignal).toBe(controller.signal)
   })
 })
