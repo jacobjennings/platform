@@ -44,6 +44,7 @@ import type {
 } from './storage'
 import { type Tx, type TxWorkspaceEvent, WorkspaceEvent } from './tx'
 import { platformNow, platformNowDiff, toFindResult } from './utils'
+import { type SnapshotPage, type SnapshotRequest } from './snapshot'
 
 /**
  * @public
@@ -72,6 +73,9 @@ export interface Client extends Storage, FulltextStorage {
     params: DomainParams,
     options?: DomainRequestOptions
   ) => Promise<DomainResult<T>>
+
+  // One bounded page of a versioned, multi-query snapshot read.
+  findSnapshot?: (request: SnapshotRequest) => Promise<SnapshotPage>
 }
 
 /**
@@ -113,6 +117,7 @@ export interface ClientConnection extends Storage, FulltextStorage, BackupClient
   getLastHash?: (ctx: MeasureContext) => Promise<string | undefined>
   pushHandler: (handler: TxHandler) => void
   domainRequest: (ctx: OperationDomain, params: DomainParams, options?: DomainRequestOptions) => Promise<DomainResult>
+  findSnapshot?: (request: SnapshotRequest) => Promise<SnapshotPage>
 }
 
 class ClientImpl implements Client, BackupClient {
@@ -169,6 +174,13 @@ class ClientImpl implements Client, BackupClient {
     options?: DomainRequestOptions
   ): Promise<DomainResult> {
     return await this.conn.domainRequest(ctx, params, options)
+  }
+
+  async findSnapshot (request: SnapshotRequest): Promise<SnapshotPage> {
+    if (this.conn.findSnapshot === undefined) {
+      throw new Error('This connection does not support snapshot reads')
+    }
+    return await this.conn.findSnapshot(request)
   }
 
   async findOne<T extends Doc>(
