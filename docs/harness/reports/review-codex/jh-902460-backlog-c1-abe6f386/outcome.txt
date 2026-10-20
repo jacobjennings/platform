@@ -1,0 +1,2 @@
+SOCKET SEND 0.0 s, failed, delivery not confirmed: cannot send to session 'JakeHarnessOrchestrator' at /run/user/1000/cc-socks/43843.sock: [Errno 2] No such file or directory
+harness-reviewmerge: delivery failed: the session socket send failed: cannot send to session 'JakeHarnessOrchestrator' at /run/user/1000/cc-socks/43843.sock: [Errno 2] No such file or directory; steer_headless_cli is from the settings file /home/jakej/gh/jake-harness/harness.toml; message: merged JH-902460

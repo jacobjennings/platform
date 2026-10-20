@@ -1,0 +1,61 @@
+{
+  "tip": "88f7a98fa4f1a2b5f6867af4df7d1a56500a1b71",
+  "branch": "jj/activity-feed",
+  "retries": 2,
+  "lane_time_limit_seconds": 4500,
+  "worker_record": "docs/harness/reports/review-codex/jh-902460-backlog-c1-abe6f386/reviewer-gate-results.jsonl",
+  "resolved": null,
+  "lane_wait_seconds": 0.0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "base": "73fa1a91ecc22140aabefffe180b5ddaca1aee4f",
+      "tested": "45533155e932bed30bcc996413362b12e2df3cac",
+      "outcome": "pushed",
+      "conflicted": [],
+      "reviewer_changed": [],
+      "items": [
+        {
+          "item": "foundations/core/packages/postgres-base/src/__tests__/connection.test.ts",
+          "kind": "test",
+          "reuse": true,
+          "reason": "the merge is clean, so the worker result stands",
+          "gate_reason": null,
+          "worker_commit": "6b76543b18e8fa0174dbdbac792140f496caf6bb",
+          "worker_tree": "280c16bf2a8a2e6553bee3acc749f4cd06a70a79"
+        },
+        {
+          "item": "foundations/server/packages/postgres/src/__tests__/conversion.spec.ts",
+          "kind": "test",
+          "reuse": true,
+          "reason": "the merge is clean, so the worker result stands",
+          "gate_reason": null,
+          "worker_commit": "6b76543b18e8fa0174dbdbac792140f496caf6bb",
+          "worker_tree": "280c16bf2a8a2e6553bee3acc749f4cd06a70a79"
+        }
+      ],
+      "setup_failed": null,
+      "setup_tree_change": null,
+      "failing_checks": []
+    }
+  ],
+  "tested": "45533155e932bed30bcc996413362b12e2df3cac",
+  "pushed": "45533155e932bed30bcc996413362b12e2df3cac",
+  "outcome": "pushed",
+  "handoffs": [],
+  "unowned_handoff": null,
+  "handoff_unread": [],
+  "failing_after_merge": [],
+  "failing_checks": [],
+  "setup_failed": null,
+  "setup_tree_change": null,
+  "frozen_files": {
+    "paths": [
+      "orchestrator/merge-train.py",
+      "orchestrator/train-queue.py"
+    ],
+    "differing_before_merge": [],
+    "restored": [],
+    "differing_after_merge": []
+  }
+}

@@ -42,7 +42,7 @@ The context reader returned “selector did not return strict JSON” for the la
 
 The uncommitted local harness.toml supplies only the two Jest runners and gate settings. It is ignored and is not part of the merge. No committed settings file changed.
 
-The prose checker exited 0. Its advisory warnings were “possible-jargon: Explain 'ConnectionInfo'”, “paragraph-length: This paragraph has 115 words. The warning limit is 90.” and “possible-jargon: Explain 'Test Suites'”. These refer to implementation and runner names retained for traceability.
+The prose checker exited 0. Its advisory warnings were “possible-jargon: Explain 'ConnectionInfo'”, “paragraph-length: This paragraph has 115 words. The warning limit is 90.” and “possible-jargon: Explain 'Test Suites'”. The same two possible-jargon warnings also appeared in the paragraph quoting these warnings. These refer to implementation and runner names retained for traceability.
 
 ## Evidence and identity
 
@@ -60,7 +60,23 @@ None.
 
 ## Merge record
 
-The report and reviewer fixes are committed and pushed before the merge attempt. The merge script will record the prepared merge and test reuse decisions. Merge verification is pending.
+The report and reviewer fixes were pushed in 88f7a98fa4f1a2b5f6867af4df7d1a56500a1b71 before the merge. The required script pushed merge commit 45533155e932bed30bcc996413362b12e2df3cac to jj/activity-feed. Its fresh base was 73fa1a91ecc22140aabefffe180b5ddaca1aee4f. No conflict required resolution.
+
+Both named tests reused the reviewer results from commit 6b76543b18e8fa0174dbdbac792140f496caf6bb and tree 280c16bf2a8a2e6553bee3acc749f4cd06a70a79. Each decision reason is “the merge is clean, so the worker result stands”. No test ran on origin/main or origin/jj/activity-feed.
+
+The frozen_files record is quoted below. No restoration commit was needed.
+
+```json
+"frozen_files": {"paths": ["orchestrator/merge-train.py", "orchestrator/train-queue.py"], "differing_before_merge": [], "restored": [], "differing_after_merge": []}
+```
+
+Fresh fetch and merge-base --is-ancestor checks returned 0 for the original reviewed tip and the applied-fix tip against origin/jj/activity-feed. The script record has no failing_after_merge or failing_checks entries.
+
+Two invocations using the full card URL refused before any write with “card repo lookup failed:”. Using the supported card identifier succeeded. Temporary checkout links supplied the configured tilde paths under the throwaway HOME. No configured repository or merge destination was changed.
+
+The outcome step verified ancestry and set the card to stage:merged. A separate read-back confirmed stage:merged. It then exited 1 because the Orchestrator socket was absent. Its exact notification was “merged JH-902460”. Delivery was not confirmed. The error was “cannot send to session 'JakeHarnessOrchestrator' at /run/user/1000/cc-socks/43843.sock: [Errno 2] No such file or directory”. No alternative session was contacted.
+
+The script emitted no gate-results.jsonl because both named tests were reused. reviewer-gate-results.jsonl and the copied raw test captures hold the results. reviewmerge.json records both reuse decisions. The final script records and updated report are committed only on the review branch.
 
 ## Failing after merge
 
@@ -74,4 +90,4 @@ The report and reviewer fixes are committed and pushed before the merge attempt.
 
 No follow-on is declared. Do not treat the production stall as measured resolved without the local acceptance evidence described above.
 
-NOT MERGED
+MERGED
