@@ -49,9 +49,20 @@ explicit: `changes` covers writes committed before that final query.
 **Permissions.** Every section query goes through the same pipeline as
 `findAll`, so workspace membership and the existing space read security apply
 unchanged. The server also loads the request space through that pipeline and
-refuses the read when the space is not visible, and it pins scoped sections to
-the request space so a caller cannot widen the read into another project. The
-call grants no access that `findAll` does not already grant.
+refuses the read when the space is not visible. Section scope is resolved once,
+before any row is read, so a request that points a scoped section at another
+space is refused as a whole rather than reported as a failed section. The call
+grants no access that `findAll` does not already grant.
+
+Measured guard outcomes on the local stack (same scenario):
+
+| Attempt | Result |
+| --- | --- |
+| Scoped section query naming another space | refused: "asks for a space outside the request space" |
+| Unknown space | refused: "space is not visible to this account" |
+| Token used with a different section set | refused: "token belongs to another read" |
+| Two sections with the same key | refused: "section cards is repeated" |
+| Top level `$where` in a section query | refused: "cannot use the top level operator $where" |
 
 **Bounds and partial failure.** At most 16 sections, a per-section limit clamped
 to 1 to 1000 (default 200), and at most 2000 rows per section in the change set.
