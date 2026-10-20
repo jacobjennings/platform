@@ -5,7 +5,6 @@ export class SlidingWindowRateLimitter {
   string,
   {
     requests: number[]
-    rejectedRequests: number // Counter for rejected requests
     resetTime: number
   }
   >()
@@ -25,39 +24,32 @@ export class SlidingWindowRateLimitter {
 
     let rateLimit = this.rateLimits.get(groupId)
     if (rateLimit == null) {
-      rateLimit = { requests: [], resetTime: now + this.rateLimitWindow, rejectedRequests: 0 }
+      rateLimit = { requests: [], resetTime: now + this.rateLimitWindow }
       this.rateLimits.set(groupId, rateLimit)
     }
 
-    // Remove requests outside the current window
+    // Remove requests outside the current window. An accepted request is always
+    // recorded at the time it was checked, so capacity is released on time.
     rateLimit.requests = rateLimit.requests.filter((time) => time > windowStart)
 
-    // Reset rejected requests counter when window changes
-    if (rateLimit.requests.length === 0) {
-      rateLimit.rejectedRequests = 0
-    }
-
-    // Update reset time
-    rateLimit.resetTime = now + this.rateLimitWindow
-
-    if (rateLimit.requests.length <= this.rateLimitMax) {
-      rateLimit.requests.push(now + (rateLimit.rejectedRequests > this.rateLimitMax * 2 ? this.rateLimitWindow * 5 : 0))
-    }
-
     if (rateLimit.requests.length >= this.rateLimitMax) {
-      rateLimit.rejectedRequests++
-
-      // Find when the oldest request will exit the window
-      const nextAvailableTime = rateLimit.requests[0] + this.rateLimitWindow
+      // Reject before recording anything. A rejected request must not consume
+      // capacity and must not delay the capacity that accepted work releases.
+      const oldest = rateLimit.requests[0]
+      const nextAvailableTime = oldest !== undefined ? oldest + this.rateLimitWindow : now + this.rateLimitWindow
+      rateLimit.resetTime = nextAvailableTime
 
       return {
         remaining: 0,
         limit: this.rateLimitMax,
         current: rateLimit.requests.length,
-        reset: rateLimit.resetTime,
-        retryAfter: Math.max(1, nextAvailableTime - now + 1)
+        reset: nextAvailableTime,
+        retryAfter: Math.max(1, Math.min(this.rateLimitWindow, nextAvailableTime - now))
       }
     }
+
+    rateLimit.requests.push(now)
+    rateLimit.resetTime = now + this.rateLimitWindow
 
     return {
       remaining: this.rateLimitMax - rateLimit.requests.length,
