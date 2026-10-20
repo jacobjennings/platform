@@ -33,10 +33,68 @@ export function slowSqlThreshold (): number {
  * out of the log. Preserve quoted identifiers and $n placeholders.
  */
 export function normalizeSql (sql: string): string {
-  const redacted = sql.replace(
-    /--[^\n]*|\/\*[\s\S]*?\*\/|\$(?:([A-Za-z_][A-Za-z_0-9]*)?)\$[\s\S]*?\$\1\$|(?:[eEbBxX])?'(?:''|\\[\s\S]|[^'])*'|"(?:""|[^"])*"|\$\d+|\b\d+(?:\.\d+)?(?:[eE][+-]?\d+)?\b/g,
-    (token) => token.startsWith('"') || /^\$\d+$/.test(token) ? token : '?'
-  )
+  let redacted = ''
+  let i = 0
+  while (i < sql.length) {
+    if (sql.startsWith('--', i)) {
+      const end = sql.indexOf('\n', i + 2)
+      i = end < 0 ? sql.length : end
+      redacted += '?'
+      continue
+    }
+    if (sql.startsWith('/*', i)) {
+      let depth = 1
+      i += 2
+      while (i < sql.length && depth > 0) {
+        if (sql.startsWith('/*', i)) {
+          depth++
+          i += 2
+        } else if (sql.startsWith('*/', i)) {
+          depth--
+          i += 2
+        } else {
+          i++
+        }
+      }
+      redacted += '?'
+      continue
+    }
+    const dollar = /^\$(?:[A-Za-z_][A-Za-z_0-9]*)?\$/.exec(sql.slice(i))
+    if (dollar !== null) {
+      const end = sql.indexOf(dollar[0], i + dollar[0].length)
+      i = end < 0 ? sql.length : end + dollar[0].length
+      redacted += '?'
+      continue
+    }
+    const escaped = /^[eE]'/.test(sql.slice(i)) && (i === 0 || !/[A-Za-z_0-9$]/.test(sql[i - 1]))
+    if (sql[i] === "'" || escaped) {
+      i += escaped ? 2 : 1
+      while (i < sql.length) {
+        // Only E strings treat a backslash as an escape. Ordinary strings
+        // use PostgreSQL's default standard_conforming_strings behavior.
+        if (escaped && sql[i] === '\\') {
+          i += 2
+        } else if (sql[i] === "'") {
+          if (sql[i + 1] !== "'") {
+            i++
+            break
+          }
+          i += 2
+        } else {
+          i++
+        }
+      }
+      redacted += '?'
+      continue
+    }
+    const token = /^(?:"(?:""|[^"])*"|\$\d+|[A-Za-z_][A-Za-z_0-9$]*|\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)/.exec(sql.slice(i))
+    if (token !== null) {
+      redacted += /^\d/.test(token[0]) ? '?' : token[0]
+      i += token[0].length
+    } else {
+      redacted += sql[i++]
+    }
+  }
   const normalized = redacted.replace(/\s+/g, ' ').trim()
   return normalized.length > MAX_STATEMENT_LENGTH ? normalized.slice(0, MAX_STATEMENT_LENGTH) + '...' : normalized
 }
