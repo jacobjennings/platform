@@ -192,6 +192,29 @@ async function run(operation, request) {
     }
     return result
   })
+  if (operation === 'snapshotGuards') return measure(operation, async () => {
+    const { client, tracker } = await snapshotConnection()
+    const jh = await client.findOne(tracker.class.Project, { identifier: 'JH' }, { showArchived: true })
+    const vk8 = await client.findOne(tracker.class.Project, { identifier: 'VK8' }, { showArchived: true })
+    if (!jh || !vk8) throw new Error('The guard check needs both fixture projects')
+    const guards = {}
+    const outcome = async (name, work) => {
+      try { await work(); guards[name] = 'accepted' } catch (error) { guards[name] = String(error.message).split('\n')[0].slice(0, 160) }
+    }
+    const cardSection = key => ({ key, _class: tracker.class.Issue, query: {}, limit: 10 })
+    // A scoped section cannot be pointed at another project.
+    await outcome('foreignSpace', () => client.findSnapshot({ space: jh._id, sections: [{ ...cardSection('cards'), query: { space: vk8._id } }] }))
+    // An unknown space is not visible.
+    await outcome('unknownSpace', () => client.findSnapshot({ space: '000000000000000000000000', sections: [cardSection('cards')] }))
+    // A token belongs to the read that issued it.
+    const first = await client.findSnapshot({ space: jh._id, sections: [cardSection('cards')] })
+    if (first.next === undefined) throw new Error('The guard read expected a continuation token')
+    await outcome('tokenMismatch', () => client.findSnapshot({ space: jh._id, sections: [cardSection('other')], cursor: first.next }))
+    // Duplicate keys and top level operators are refused.
+    await outcome('duplicateKey', () => client.findSnapshot({ space: jh._id, sections: [cardSection('cards'), cardSection('cards')] }))
+    await outcome('queryOperator', () => client.findSnapshot({ space: jh._id, sections: [{ ...cardSection('cards'), query: { $where: '1' } }] }))
+    return { guards, rows: [] }
+  })
   if (operation === 'readFilteredWalk') return measure(operation, async () => {
     const { client, tracker } = await snapshotConnection()
     const project = await client.findOne(tracker.class.Project, { identifier: 'JH' }, { showArchived: true })
