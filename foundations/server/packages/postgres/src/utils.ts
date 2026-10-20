@@ -39,9 +39,9 @@ import {
   type DataType,
   domainIndexDefinitions,
   getDocFieldsByDomains,
-  getIndex,
   getSchema,
   getSchemaAndFields,
+  getSchemaIndexDefinitions,
   type Schema,
   type SchemaAndFields,
   translateDomain
@@ -116,26 +116,35 @@ export async function createTables (
 }
 
 /**
- * Create the indexes that a query plan selected, for tables that already exist
- * as well as new ones. CREATE INDEX IF NOT EXISTS makes this a catalog check on
- * every later start. CockroachDB builds a new index online, so reads and writes
- * continue during the build. A failure is reported and does not stop the
- * workspace from attaching, the next start retries the build.
+ * Create every index the domain schema marks with `index: true`, plus the query
+ * shaped indexes in domainIndexDefinitions, for tables that already exist as
+ * well as new ones. A table restored from a backup has its primary key only, so
+ * creating the schema indexes at attach is the way an existing workspace gets
+ * them. CREATE INDEX IF NOT EXISTS makes every later start a catalog check.
+ * CockroachDB builds a new index online, so reads and writes continue during
+ * the build. A failure is reported and does not stop the workspace from
+ * attaching, the next start retries the build.
  */
 async function createDomainIndexes (client: postgres.Sql, domains: string[]): Promise<void> {
   for (const domain of domains) {
-    for (const index of domainIndexDefinitions[domain] ?? []) {
-      for (let attempt = 1; attempt <= 3; attempt++) {
-        try {
-          await client.unsafe(`CREATE INDEX IF NOT EXISTS ${index.name} ON ${domain} (${index.columns})`)
-          break
-        } catch (err: any) {
-          if (attempt === 3) {
-            console.warn(`Failed to create index ${index.name} on ${domain}`, err)
-          } else {
-            await new Promise((resolve) => setTimeout(resolve, 3000))
-          }
-        }
+    const indexes = [...getSchemaIndexDefinitions(domain), ...(domainIndexDefinitions[domain] ?? [])]
+    for (const index of indexes) {
+      const using = index.indexType !== undefined && index.indexType !== 'btree' ? ` USING ${index.indexType}` : ''
+      await createIndexIfNotExists(client, `${index.name} ON ${domain}${using} (${index.columns})`)
+    }
+  }
+}
+
+async function createIndexIfNotExists (client: postgres.Sql, statement: string): Promise<void> {
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      await client.unsafe(`CREATE INDEX IF NOT EXISTS ${statement}`)
+      return
+    } catch (err: any) {
+      if (attempt === 3) {
+        console.warn(`Failed to create index ${statement}`, err)
+      } else {
+        await new Promise((resolve) => setTimeout(resolve, 3000))
       }
     }
   }
@@ -189,23 +198,12 @@ async function createTable (client: postgres.Sql, domain: string): Promise<void>
     fields.push(`"${key}" ${val.type} ${val.notNull ? 'NOT NULL' : ''}`)
   }
   const colums = fields.join(', ')
-  const res = await client.unsafe(`CREATE TABLE IF NOT EXISTS ${domain} (
+  await client.unsafe(`CREATE TABLE IF NOT EXISTS ${domain} (
       "workspaceId" uuid NOT NULL,
       ${colums}, 
       data JSONB NOT NULL,
       PRIMARY KEY("workspaceId", _id)
     )`)
-  if (res.count > 0) {
-    for (const key in schema) {
-      const val = schema[key]
-      if (val.index) {
-        await client.unsafe(`
-          CREATE INDEX ${domain}_${key} ON ${domain} ${getIndex(val)} ("${key}")
-        `)
-      }
-      fields.push(`"${key}" ${val.type} ${val.notNull ? 'NOT NULL' : ''}`)
-    }
-  }
 }
 
 export function convertDoc<T extends Doc> (
