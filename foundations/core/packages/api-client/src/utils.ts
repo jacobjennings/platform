@@ -25,12 +25,31 @@ export interface WorkspaceToken {
   info: WorkspaceLoginInfo
 }
 
+export function throwIfAborted (signal?: AbortSignal): void {
+  if (signal?.aborted === true) {
+    throw abortError(signal)
+  }
+}
+
+export function abortError (signal?: AbortSignal): Error {
+  const reason = signal?.reason
+  if (reason instanceof Error) {
+    return reason
+  }
+  const error = new Error('The operation was aborted')
+  error.name = 'AbortError'
+  return error
+}
+
 export async function getWorkspaceToken (
   url: string,
   options: AuthOptions,
-  config?: ServerConfig
+  config?: ServerConfig,
+  signal?: AbortSignal
 ): Promise<WorkspaceToken> {
-  config ??= await loadServerConfig(url)
+  throwIfAborted(signal)
+  config ??= await loadServerConfig(url, signal)
+  throwIfAborted(signal)
 
   let token: string | undefined
 
@@ -46,10 +65,14 @@ export async function getWorkspaceToken (
     throw new Error('Login failed')
   }
 
+  // The account client has its own bounded retry window, so a cancelled
+  // connect stops here rather than starting the workspace selection.
+  throwIfAborted(signal)
   const ws = await getAccountClient(config.ACCOUNTS_URL, token).selectWorkspace(options.workspace)
   if (ws === undefined) {
     throw new Error('Workspace not found')
   }
+  throwIfAborted(signal)
 
   return { endpoint: ws.endpoint, token: ws.token, workspaceId: ws.workspace, info: ws }
 }

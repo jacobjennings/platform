@@ -215,6 +215,12 @@ export interface ConnectSocketOptions {
    * Specifies how long to wait for a connection before timing out
    */
   connectionTimeout?: number
+
+  /**
+   * Cancels the connect call and the work it owns. Aborting closes the
+   * websocket and rejects a model load that is still pending.
+   */
+  signal?: AbortSignal
 }
 
 /**

@@ -59,10 +59,11 @@ class MarkupOperationsImpl implements MarkupOperations {
     objectId: Ref<Doc>,
     objectAttr: string,
     doc: MarkupRef,
-    format: MarkupFormat
+    format: MarkupFormat,
+    signal?: AbortSignal
   ): Promise<string> {
     const collabId = makeCollabId(objectClass, objectId, objectAttr)
-    const markup = await this.collaborator.getMarkup(collabId, doc)
+    const markup = await this.collaborator.getMarkup(collabId, doc, signal)
     return this.convertMarkup(markup, format)
   }
 
@@ -70,10 +71,12 @@ class MarkupOperationsImpl implements MarkupOperations {
     objectClass: Ref<Class<Doc>>,
     objectAttr: string,
     items: MarkupFetchItem[],
-    format: MarkupFormat
+    format: MarkupFormat,
+    signal?: AbortSignal
   ): Promise<string[]> {
     const markups = await this.collaborator.getMarkups(
-      items.map((item) => ({ document: makeCollabId(objectClass, item.objectId, objectAttr), source: item.markup }))
+      items.map((item) => ({ document: makeCollabId(objectClass, item.objectId, objectAttr), source: item.markup })),
+      signal
     )
     return markups.map((markup) => this.convertMarkup(markup, format))
   }
@@ -98,7 +101,8 @@ class MarkupOperationsImpl implements MarkupOperations {
     objectId: Ref<Doc>,
     objectAttr: string,
     value: string,
-    format: MarkupFormat
+    format: MarkupFormat,
+    signal?: AbortSignal
   ): Promise<MarkupRef> {
     let markup: Markup = ''
 
@@ -117,6 +121,6 @@ class MarkupOperationsImpl implements MarkupOperations {
     }
 
     const collabId = makeCollabId(objectClass, objectId, objectAttr)
-    return await this.collaborator.createMarkup(collabId, markup)
+    return await this.collaborator.createMarkup(collabId, markup, signal)
   }
 }
