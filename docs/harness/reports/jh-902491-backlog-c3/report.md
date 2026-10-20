@@ -203,8 +203,10 @@ Single-card writes at one client, before and after:
 
 The shipped index adds one entry per `TagReference` write. Label references are
 written only when labels change, so the write cost does not fall on ordinary
-card updates. The bulk migration write path was not measured because of the
-limiter stall above.
+card updates. The samples above come from the reduced matrix, whose final arm
+also held the rejected task and tags-space indexes, so they are an upper bound
+for the shipped set. The bulk migration write path was not measured because of
+the limiter stall above.
 
 ## Rollout and existing workspaces
 
