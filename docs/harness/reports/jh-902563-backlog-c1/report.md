@@ -51,7 +51,12 @@ every remaining matching entry. On page 3 that was 13,060 decoded rows and
 54 ms, against 2,048 rows and 15 ms with `_class` carried in the index.
 
 The adapter's statement is in `index-statement.sql`. It issued and built in
-0.7 s on the restored snapshot. The index is 22.10 MB.
+0.7 s on the restored snapshot. The index is 22.10 MB. The built
+`lib/schemas.js` emits exactly this statement:
+
+```
+CREATE INDEX IF NOT EXISTS activity_workspace_collection_id ON activity ("workspaceId", (data#>>'{collection}'), _id) STORING (_class)
+```
 
 ## Measurement
 
