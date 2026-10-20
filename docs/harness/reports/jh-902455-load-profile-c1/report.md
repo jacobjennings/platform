@@ -60,7 +60,8 @@ says it was taken on 19 October 2026. Counts measured before load mutations:
 
 The issue counts include VK8 6,914, JH 2,430, archived VK11 1,400 and smaller
 projects. Four projects are active. Seventeen fresh local account identities
-were created with generated private credentials and fixture project memberships.
+were created as local workspace owners with generated private credentials and
+fixture project memberships. Production account permissions were not inspected.
 No production credentials were read.
 
 The migration fixture copies the shape of a real stage reference onto 4,800
@@ -449,6 +450,8 @@ Dependency installation passed with the supported Node and browser download
 skipped. Standalone CJS syntax checks, shell syntax, Compose configuration and
 Git whitespace checks passed. All 32 baseline CPU profile JSON files validated.
 The page variants passed completeness and canonical-hash equality checks.
+The copied client and CLI match the pinned harness commit byte for byte.
+The emergency collector rejected execution outside its dedicated fixture runner.
 
 The fresh one-command check used:
 
@@ -519,7 +522,8 @@ docker network rm "$(cat /path/to/run-state/network-id)"
 
 The ignored fixture state remains, about 4.8 GiB, and raw results about 185 MiB
 as measured by du after teardown. The local jh-902455-minio:local image remains
-as a rerun cache. Source builds and dependency caches remain. No process or
+as a rerun cache, recorded as `sha256:28071b9340e2dd9a15e7f4c0cb54348795b3edd1b877fb7d6d74c0c675e25e9b`.
+Source builds and dependency caches remain. No process or
 container from this benchmark is intentionally left running. Snapshot data,
 credentials and raw profiles were not committed or sent to an external service.
 Pushes went only to the mktemp bare repository recorded in
