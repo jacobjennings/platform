@@ -15,8 +15,9 @@ supervision read at one client went from 56.9 s to 490.3 s, an 8.6 fold
 regression. That index is left out.
 
 Two indexes are left out of the shipped set, `activity.attachedTo` and
-`task.space`. Both changed a measured read for the worse. Every other schema
-index is created.
+`task.space`. The full set slowed measured reads. The combined drop improved the
+supervision read, but does not isolate each index. Every other schema index
+is created.
 
 The one client project read is still slower with the shipped set. It measured a
 median of 3,211 ms against 1,870 ms before, on a quiet stack. That change is not
@@ -105,10 +106,10 @@ back to 61.8 s. This matches the activity index JH-902491 rejected.
 ### `task.space`
 
 The one client project read took 3.49 s with the full set against 1.87 s
-before. After dropping it and the activity index the same read was 3.04 s, so
-it did not account for all of the change. JH-902491 also measured this shape,
+before. The saved diagnostic after dropping it and the activity index read 4.71 s.
+That probe does not establish an improvement from dropping this index. JH-902491 also measured this shape,
 `task (workspaceId, space, _id)`, and rejected it on latency. It is left out on
-both grounds. The remaining 1.87 s to 3.04 s difference is not attributed.
+both grounds. The remaining project-read difference is not attributed.
 
 ## Rig numbers
 
@@ -152,9 +153,9 @@ the shipped set. The one client shipped-set values come from a separate
 `driver.cjs diagnostic` and two `driver.cjs pages50` probes on the same live
 stack. The 3,211 ms project read is the median of a quiet `pages50` probe on the
 fresh shipped-set stack (`run.7QzLu0`), with 3,126, 3,211 and 3,979 ms. The
-`diagnostic` probe on the earlier stack read 3,042 ms. Group 4 ran entirely
+`diagnostic` probe saved on the earlier stack read 4,708 ms. Group 4 ran entirely
 after `activity.attachedTo` and `task.space` were dropped, so it is the shipped
-set. Its project read median of 13,037 is 13 percent above the before group
+set. Its project read median of 13,037 is 7.1 percent above the before group
 median of 12,176, while its single fast batch moved from 3.0 s to 3.4 s and its
 slow batch from 29.0 s to 28.7 s.
 
