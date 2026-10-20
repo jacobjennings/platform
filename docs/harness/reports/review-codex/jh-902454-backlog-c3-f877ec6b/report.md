@@ -62,7 +62,7 @@ The context reader returned "selector line labels do not match source bytes" for
 
 No worker gate row is reused. The worker report names ef3dac01c as its test commit but supplies no committed gate-results.jsonl. Its build and test claims are not independently certified by this review.
 
-The prose checker exited 0. Its warnings were: "possible-jargon: Explain 'MeasureContext' in this sentence if it is a project term", "possible-jargon: Explain 'ReferenceError' in this sentence if it is a project term" twice, and "possible-jargon: Explain 'Full Rush' in this sentence if it is a project term". These name the logger, the literal runtime error and the build tool.
+The prose checker exited 0. Its warnings were: "possible-jargon: Explain 'MeasureContext' in this sentence if it is a project term", "possible-jargon: Explain 'ReferenceError' in this sentence if it is a project term" twice, and "possible-jargon: Explain 'Full Rush' in this sentence if it is a project term". These name the logger, the literal runtime error and the build tool. The final checker repeated those warnings in this quoted paragraph and also warned "possible-jargon: Explain 'The Director' in this sentence if it is a project term".
 
 ## Review binding and evidence
 
