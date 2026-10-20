@@ -168,9 +168,12 @@ export interface SlowRequestRecord {
 export class ConnectTimings {
   private readonly helloAt = new Map<string, number>()
   private readonly completed = new Set<string>()
+  private readonly responded = new Set<string>()
 
   hello (sessionId: string, time: number = Date.now()): void {
     this.helloAt.set(sessionId, time)
+    this.completed.delete(sessionId)
+    this.responded.delete(sessionId)
   }
 
   /** Returns the hello to completion time for the first completion, or undefined. */
@@ -180,16 +183,22 @@ export class ConnectTimings {
       return undefined
     }
     this.completed.add(sessionId)
+    this.requestCompleted(sessionId)
     return time - start
   }
 
+  requestCompleted (sessionId: string): void {
+    if (this.helloAt.has(sessionId)) this.responded.add(sessionId)
+  }
+
   isWaiting (sessionId: string): boolean {
-    return this.helloAt.has(sessionId) && !this.completed.has(sessionId)
+    return this.helloAt.has(sessionId) && !this.responded.has(sessionId)
   }
 
   remove (sessionId: string): void {
     this.helloAt.delete(sessionId)
     this.completed.delete(sessionId)
+    this.responded.delete(sessionId)
   }
 }
 
