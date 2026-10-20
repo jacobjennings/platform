@@ -124,6 +124,7 @@ Final run, whole files, one at a time, on
 | --- | ---: | --- |
 | `foundations/core/packages/collaborator-client/src/__tests__/cancellation.test.ts` | 0 | 5 passed, 5 total |
 | `foundations/core/packages/client-resources/src/__tests__/connection.test.ts` | 0 | 4 passed, 4 total |
+| `foundations/core/packages/client-resources/src/__tests__/integration.test.ts` | 0 | 14 passed, 14 total |
 | `foundations/core/packages/client-resources/src/__tests__/cancellation.test.ts` | 0 | 4 passed, 4 total |
 | `foundations/core/packages/api-client/src/__tests__/markup-client.test.ts` | 0 | 14 passed, 14 total |
 | `foundations/core/packages/api-client/src/__tests__/config.test.ts` | 0 | 5 passed, 5 total |
@@ -132,7 +133,7 @@ Final run, whole files, one at a time, on
 | `foundations/core/packages/client/src/__tests__/client.test.ts` | 0 | 13 passed, 13 total |
 | `foundations/core/packages/core/src/__tests__/client.test.ts` | 0 | 2 passed, 2 total |
 
-72 tests passed, 0 failed, `rc=0` for every file.
+86 tests passed, 0 failed, `rc=0` for every file.
 
 How they ran, in each package folder, with a fresh HOME and TMPDIR per file:
 
