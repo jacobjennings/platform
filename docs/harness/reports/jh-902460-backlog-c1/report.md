@@ -162,7 +162,11 @@ can verify without that rig.
 - `foundations/core/packages/postgres-base/src/__tests__/connection.test.ts`
 - `docs/harness/reports/jh-902460-backlog-c1/report.md`
 - `docs/harness/reports/jh-902460-backlog-c1/gate-results.jsonl`
-- `docs/harness/reports/jh-902460-backlog-c1/gate-run-logs/` (two logs)
+
+The two gate run logs stay in the worktree under
+`docs/harness/reports/jh-902460-backlog-c1/gate-run-logs/`. The repository
+ignores `*.log`, so they are not committed. The result lines they produced are
+pasted above.
 
 ## RECOMMENDATIONS
 
