@@ -1,0 +1,14 @@
+PASS src/__tests__/connection.test.ts
+  ConnectionMgr reservations
+    ✓ releases idle leases before a transaction waits for the pool (1 ms)
+    ✓ bounds the idle leases one manager can hold
+    ✓ lets sixteen managed contexts share a ten connection pool
+    ✓ does not hold a lease for a presence lookup on an asynchronous context (2 ms)
+    ✓ cancels a reservation that cannot get a connection and releases the late one (54 ms)
+    ✓ releases the lease of a context that is cancelled during a transaction
+
+Test Suites: 1 passed, 1 total
+Tests:       6 passed, 6 total
+Snapshots:   0 total
+Time:        0.353 s
+Ran all test suites matching /connection.test.ts/i.

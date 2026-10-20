@@ -1,0 +1,268 @@
+The rush.json configuration requests Rush version 5.158.1
+
+Invoking "rush install"
+-----------------------
+
+[33mYour version of Node.js (26.10.0) has not been tested with this release of Rush. Please consider installing a newer version of the "@microsoft/rush" package, or downgrading Node.js.
+[39m
+Found configuration in /home/jakej/gh/huly-platform-worktrees/review-codex-jh-902460-backlog-c1-abe6f386/rush.json
+
+
+[1mRush Multi-Project Build Tool 5.158.1[33m[39m[22m[36m - https://rushjs.io[39m
+Node.js version is 26.10.0 (pre-LTS)
+
+
+Your dev environment is running Node.js version v26.10.0 which does not meet the requirements for building this repository.  (The rush.json configuration requires nodeSupportedVersionRange=">=20.0.0 <25.0.0")
+Starting "rush install"
+(node:2047511) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Validating package manager shrinkwrap file.
+
+Creating /tmp/jake-harness-workers/harness-brief-review-9rUQvt07/.rush/node-v26.10.0
+Trying to acquire lock for pnpm-10.15.1
+Acquired lock for pnpm-10.15.1
+[1mInstalling pnpm version 10.15.1
+[22m
+Transforming /home/jakej/gh/huly-platform-worktrees/review-codex-jh-902460-backlog-c1-abe6f386/common/config/rush/.npmrc
+  --> "/tmp/jake-harness-workers/harness-brief-review-9rUQvt07/.rush/node-v26.10.0/pnpm-10.15.1/.npmrc"
+
+Running "npm install" in /tmp/jake-harness-workers/harness-brief-review-9rUQvt07/.rush/node-v26.10.0/pnpm-10.15.1
+npm warn Unknown project config "always-auth". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+added 1 package, and audited 2 packages in 9s
+
+1 package is looking for funding
+  run `npm fund` for details
+
+1 high severity vulnerability
+
+To address all issues, run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+Successfully installed pnpm version 10.15.1
+
+Symlinking "/home/jakej/gh/huly-platform-worktrees/review-codex-jh-902460-backlog-c1-abe6f386/common/temp/pnpm-local"
+  --> "/tmp/jake-harness-workers/harness-brief-review-9rUQvt07/.rush/node-v26.10.0/pnpm-10.15.1"
+Transforming /home/jakej/gh/huly-platform-worktrees/review-codex-jh-902460-backlog-c1-abe6f386/common/config/rush/.npmrc
+  --> "/home/jakej/gh/huly-platform-worktrees/review-codex-jh-902460-backlog-c1-abe6f386/common/temp/.npmrc"
+
+[1mUpdating workspace files in /home/jakej/gh/huly-platform-worktrees/review-codex-jh-902460-backlog-c1-abe6f386/common/temp[22m
+Copying "/home/jakej/gh/huly-platform-worktrees/review-codex-jh-902460-backlog-c1-abe6f386/common/config/rush/pnpm-lock.yaml"
+  --> "/home/jakej/gh/huly-platform-worktrees/review-codex-jh-902460-backlog-c1-abe6f386/common/temp/pnpm-lock.yaml"
+Copying "/home/jakej/gh/huly-platform-worktrees/review-codex-jh-902460-backlog-c1-abe6f386/common/config/rush/pnpm-lock.yaml"
+  --> "/home/jakej/gh/huly-platform-worktrees/review-codex-jh-902460-backlog-c1-abe6f386/common/temp/pnpm-lock-preinstall.yaml"
+
+[1mChecking installation in "/home/jakej/gh/huly-platform-worktrees/review-codex-jh-902460-backlog-c1-abe6f386/common/temp"[22m
+
+
+[1mRunning "pnpm install" in /home/jakej/gh/huly-platform-worktrees/review-codex-jh-902460-backlog-c1-abe6f386/common/temp[22m
+
+Scope: all 480 workspace projects
+Progress: resolved 0, reused 0, downloaded 1, added 0
+../scripts                               |  WARN  deprecated eslint-config-standard-with-typescript@40.0.0
+
+   ╭──────────────────────────────────────────╮
+   │                                          │
+   │   Update available! 10.15.1 → 12.14.0.   │
+   │   Changelog: https://pnpm.io/v/12.14.0   │
+   │     To update, run: pnpm add -g pnpm     │
+   │                                          │
+   ╰──────────────────────────────────────────╯
+
+../scripts                               |  WARN  deprecated eslint@8.57.1
+../../packages/hls                       |  WARN  deprecated @types/dompurify@3.2.0
+../../pods/account                       |  WARN  deprecated koa-router@12.0.1
+../../services/payment/pod-payment       |  WARN  deprecated @types/express-rate-limit@6.0.2
+Progress: resolved 330, reused 0, downloaded 330, added 0
+Progress: resolved 344, reused 0, downloaded 344, added 0
+Progress: resolved 345, reused 0, downloaded 345, added 0
+Progress: resolved 434, reused 0, downloaded 386, added 0
+Progress: resolved 1094, reused 0, downloaded 1046, added 0
+Progress: resolved 1733, reused 0, downloaded 1690, added 0
+Progress: resolved 2330, reused 0, downloaded 2249, added 0
+Progress: resolved 2498, reused 0, downloaded 2416, added 0
+Progress: resolved 2500, reused 0, downloaded 2418, added 0
+Progress: resolved 2501, reused 0, downloaded 2420, added 0
+ WARN  34 deprecated subdependencies found: @humanwhocodes/config-array@0.13.0, @humanwhocodes/object-schema@2.0.3, @npmcli/move-file@2.0.1, @otplib/plugin-crypto@12.0.1, @otplib/plugin-thirty-two@12.0.1, @otplib/preset-default@12.0.1, @types/domutils@2.1.0, are-we-there-yet@3.0.1, boolean@3.2.0, connect-multiparty@2.2.0, gauge@4.0.4, glob@7.2.3, glob@8.1.0, google-p12-pem@4.0.1, graphql-import@0.7.1, graphql-tools@4.0.5, graphql@14.7.0, inflight@1.0.6, keygrip@1.1.0, lodash.isequal@4.5.0, lodash.pick@4.4.0, mkdirp@0.3.0, node-domexception@1.0.0, npmlog@6.0.2, phin@2.9.3, phin@3.7.1, rimraf@2.7.1, rimraf@3.0.2, sourcemap-codec@1.4.8, stable@0.1.8, superagent@8.1.2, uuid@3.4.0, whatwg-encoding@3.1.1, yaeti@0.0.6
+.                                        |    +2416 ++++++++++++++++++++++++++++
+Progress: resolved 2501, reused 0, downloaded 2420, added 1
+Progress: resolved 2501, reused 0, downloaded 2420, added 1783
+Progress: resolved 2501, reused 0, downloaded 2420, added 2416, done
+.../esbuild@0.25.12/node_modules/esbuild postinstall$ node install.js
+.../node_modules/@parcel/watcher install$ node scripts/build-from-source.js
+.../sharp@0.34.5/node_modules/sharp install$ node install/check.js || npm run build
+.../node_modules/bufferutil install$ node-gyp-build
+.../node_modules/electron postinstall$ node install.js
+.../esbuild@0.25.12/node_modules/esbuild postinstall: Done
+.../node_modules/@parcel/watcher install: Done
+.../node_modules/utf-8-validate install$ node-gyp-build
+.../sharp@0.34.5/node_modules/sharp install: npm warn Unknown env config "resolution-mode". This will error in a future major version of npm. See `npm help npmrc` for supported config options.
+.../sharp@0.34.5/node_modules/sharp install: npm warn Unknown env config "verify-deps-before-run". This will error in a future major version of npm. See `npm help npmrc` for supported config options.
+.../sharp@0.34.5/node_modules/sharp install: npm warn Unknown env config "_jsr-registry". This will error in a future major version of npm. See `npm help npmrc` for supported config options.
+.../sharp@0.34.5/node_modules/sharp install: npm warn Unknown env config "resolutionmode". This will error in a future major version of npm. See `npm help npmrc` for supported config options.
+.../sharp@0.34.5/node_modules/sharp install: npm warn Unknown env config "ignore-compatibility-db". This will error in a future major version of npm. See `npm help npmrc` for supported config options.
+.../sharp@0.34.5/node_modules/sharp install: npm warn Unknown env config "store-dir". This will error in a future major version of npm. See `npm help npmrc` for supported config options.
+.../sharp@0.34.5/node_modules/sharp install: npm warn Unknown env config "cache-dir". This will error in a future major version of npm. See `npm help npmrc` for supported config options.
+.../sharp@0.34.5/node_modules/sharp install: npm warn Unknown env config "recursive". This will error in a future major version of npm. See `npm help npmrc` for supported config options.
+.../sharp@0.34.5/node_modules/sharp install: npm warn Unknown env config "ignorecompatibilitydb". This will error in a future major version of npm. See `npm help npmrc` for supported config options.
+.../sharp@0.34.5/node_modules/sharp install: npm warn Unknown env config "statedir". This will error in a future major version of npm. See `npm help npmrc` for supported config options.
+.../sharp@0.34.5/node_modules/sharp install: npm warn Unknown env config "state-dir". This will error in a future major version of npm. See `npm help npmrc` for supported config options.
+.../sharp@0.34.5/node_modules/sharp install: npm warn Unknown env config "cachedir". This will error in a future major version of npm. See `npm help npmrc` for supported config options.
+.../sharp@0.34.5/node_modules/sharp install: npm notice run sharp@0.34.5 build
+.../sharp@0.34.5/node_modules/sharp install: npm notice run node install/build.js
+.../node_modules/bufferutil install: Done
+.../sharp@0.34.5/node_modules/sharp install: sharp: Attempting to build from source via node-gyp
+.../sharp@0.34.5/node_modules/sharp install: sharp: See https://sharp.pixelplumbing.com/install#building-from-source
+.../sharp@0.34.5/node_modules/sharp install: sharp: Found node-addon-api 
+.../node_modules/utf-8-validate install$ node-gyp-build
+.../sharp@0.34.5/node_modules/sharp install: sharp: Found node-gyp 9.4.1
+.../sharp@0.34.5/node_modules/sharp install: sharp: Detected globally-installed libvips v8.18.7
+.../node_modules/msgpackr-extract install$ node-gyp-build-optional-packages
+.../sharp@0.34.5/node_modules/sharp install: gyp info it worked if it ends with ok
+.../sharp@0.34.5/node_modules/sharp install: gyp info using node-gyp@9.4.1
+.../sharp@0.34.5/node_modules/sharp install: gyp info using node@26.10.0 | linux | x64
+.../sharp@0.34.5/node_modules/sharp install: gyp info chdir src
+.../sharp@0.34.5/node_modules/sharp install: (node:2052671) [DEP0060] DeprecationWarning: The `util._extend` API is deprecated. Please use Object.assign() instead.
+.../sharp@0.34.5/node_modules/sharp install: (Use `node --trace-deprecation ...` to show where the warning was created)
+.../node_modules/utf-8-validate install: Done
+.../node_modules/protobufjs postinstall$ node scripts/postinstall
+.../sharp@0.34.5/node_modules/sharp install: gyp info find Python using Python version 3.14.7 found at "/usr/bin/python3"
+.../node_modules/utf-8-validate install: Done
+.../core-js@3.46.0/node_modules/core-js postinstall$ node -e "try{require('./postinstall')}catch(e){}"
+.../sharp@0.34.5/node_modules/sharp install: gyp http GET https://nodejs.org/download/release/v26.10.0/node-v26.10.0-headers.tar.gz
+.../node_modules/protobufjs postinstall: Done
+.../node_modules/msgpackr-extract install: Done
+.../node_modules/puppeteer postinstall$ node install.mjs
+.../core-js@3.46.0/node_modules/core-js postinstall: Thank you for using core-js ( https://github.com/zloirock/core-js ) for polyfilling JavaScript standard library!
+.../core-js@3.46.0/node_modules/core-js postinstall: The project needs your help! Please consider supporting core-js:
+.../core-js@3.46.0/node_modules/core-js postinstall: > https://opencollective.com/core-js 
+.../core-js@3.46.0/node_modules/core-js postinstall: > https://patreon.com/zloirock 
+.../core-js@3.46.0/node_modules/core-js postinstall: > https://boosty.to/zloirock 
+.../core-js@3.46.0/node_modules/core-js postinstall: > bitcoin: bc1qlea7544qtsmj2rayg0lthvza9fau63ux0fstcz 
+.../core-js@3.46.0/node_modules/core-js postinstall: I highly recommend reading this: https://github.com/zloirock/core-js/blob/master/docs/2023-02-14-so-whats-next.md 
+.../es5-ext@0.10.64/node_modules/es5-ext postinstall$  node -e "try{require('./_postinstall')}catch(e){}" || exit 0
+.../core-js@3.46.0/node_modules/core-js postinstall: Done
+.../node_modules/puppeteer postinstall: **INFO** Skipping Firefox download as instructed.
+.../es5-ext@0.10.64/node_modules/es5-ext postinstall: Done
+.../sharp@0.34.5/node_modules/sharp install: gyp http 200 https://nodejs.org/download/release/v26.10.0/node-v26.10.0-headers.tar.gz
+.../sharp@0.34.5/node_modules/sharp install: gyp http GET https://nodejs.org/download/release/v26.10.0/SHASUMS256.txt
+.../sharp@0.34.5/node_modules/sharp install: gyp http 200 https://nodejs.org/download/release/v26.10.0/SHASUMS256.txt
+.../sharp@0.34.5/node_modules/sharp install: gyp info spawn /usr/bin/python3
+.../sharp@0.34.5/node_modules/sharp install: gyp info spawn args [
+.../sharp@0.34.5/node_modules/sharp install: gyp info spawn args   '/home/jakej/gh/huly-platform-worktrees/review-codex-jh-902460-backlog-c1-abe6f386/common/temp/node_modules/.pnpm/node-gyp@9.4.1/node_modules/node-gyp/gyp/gyp_main.py',
+.../sharp@0.34.5/node_modules/sharp install: gyp info spawn args   'binding.gyp',
+.../sharp@0.34.5/node_modules/sharp install: gyp info spawn args   '-f',
+.../sharp@0.34.5/node_modules/sharp install: gyp info spawn args   'make',
+.../sharp@0.34.5/node_modules/sharp install: gyp info spawn args   '-I',
+.../sharp@0.34.5/node_modules/sharp install: gyp info spawn args   '/home/jakej/gh/huly-platform-worktrees/review-codex-jh-902460-backlog-c1-abe6f386/common/temp/node_modules/.pnpm/sharp@0.34.5/node_modules/sharp/src/build/config.gypi',
+.../sharp@0.34.5/node_modules/sharp install: gyp info spawn args   '-I',
+.../sharp@0.34.5/node_modules/sharp install: gyp info spawn args   '/home/jakej/gh/huly-platform-worktrees/review-codex-jh-902460-backlog-c1-abe6f386/common/temp/node_modules/.pnpm/node-gyp@9.4.1/node_modules/node-gyp/addon.gypi',
+.../sharp@0.34.5/node_modules/sharp install: gyp info spawn args   '-I',
+.../sharp@0.34.5/node_modules/sharp install: gyp info spawn args   '/tmp/jake-harness-workers/harness-brief-review-9rUQvt07/.cache/node-gyp/26.10.0/include/node/common.gypi',
+.../sharp@0.34.5/node_modules/sharp install: gyp info spawn args   '-Dlibrary=shared_library',
+.../sharp@0.34.5/node_modules/sharp install: gyp info spawn args   '-Dvisibility=default',
+.../sharp@0.34.5/node_modules/sharp install: gyp info spawn args   '-Dnode_root_dir=/tmp/jake-harness-workers/harness-brief-review-9rUQvt07/.cache/node-gyp/26.10.0',
+.../sharp@0.34.5/node_modules/sharp install: gyp info spawn args   '-Dnode_gyp_dir=/home/jakej/gh/huly-platform-worktrees/review-codex-jh-902460-backlog-c1-abe6f386/common/temp/node_modules/.pnpm/node-gyp@9.4.1/node_modules/node-gyp',
+.../sharp@0.34.5/node_modules/sharp install: gyp info spawn args   '-Dnode_lib_file=/tmp/jake-harness-workers/harness-brief-review-9rUQvt07/.cache/node-gyp/26.10.0/<(target_arch)/node.lib',
+.../sharp@0.34.5/node_modules/sharp install: gyp info spawn args   '-Dmodule_root_dir=/home/jakej/gh/huly-platform-worktrees/review-codex-jh-902460-backlog-c1-abe6f386/common/temp/node_modules/.pnpm/sharp@0.34.5/node_modules/sharp/src',
+.../sharp@0.34.5/node_modules/sharp install: gyp info spawn args   '-Dnode_engine=v8',
+.../sharp@0.34.5/node_modules/sharp install: gyp info spawn args   '--depth=.',
+.../sharp@0.34.5/node_modules/sharp install: gyp info spawn args   '--no-parallel',
+.../sharp@0.34.5/node_modules/sharp install: gyp info spawn args   '--generator-output',
+.../sharp@0.34.5/node_modules/sharp install: gyp info spawn args   'build',
+.../sharp@0.34.5/node_modules/sharp install: gyp info spawn args   '-Goutput_dir=.'
+.../sharp@0.34.5/node_modules/sharp install: gyp info spawn args ]
+.../sharp@0.34.5/node_modules/sharp install: <string>:123: SyntaxWarning: "\/" is an invalid escape sequence. Such sequences will not work in the future. Did you mean "\\/"? A raw string is also an option.
+.../sharp@0.34.5/node_modules/sharp install: gyp info spawn make
+.../sharp@0.34.5/node_modules/sharp install: gyp info spawn args [ 'BUILDTYPE=Release', '-C', 'build' ]
+.../sharp@0.34.5/node_modules/sharp install: make: Entering directory '/home/jakej/gh/huly-platform-worktrees/review-codex-jh-902460-backlog-c1-abe6f386/common/temp/node_modules/.pnpm/sharp@0.34.5/node_modules/sharp/src/build'
+.../sharp@0.34.5/node_modules/sharp install:   CC(target) Release/obj.target/nothing/../../../../node-addon-api@7.1.1/node_modules/node-addon-api/nothing.o
+.../sharp@0.34.5/node_modules/sharp install: rm -f Release/obj.target/../../../../node-addon-api@7.1.1/node_modules/node-addon-api/nothing.a Release/obj.target/../../../../node-addon-api@7.1.1/node_modules/node-addon-api/nothing.a.ar-file-list; mkdir -p `dirname Release/obj.target/../../../../node-addon-api@7.1.1/node_modules/node-addon-api/nothing.a`
+.../sharp@0.34.5/node_modules/sharp install: ar crs Release/obj.target/../../../../node-addon-api@7.1.1/node_modules/node-addon-api/nothing.a @Release/obj.target/../../../../node-addon-api@7.1.1/node_modules/node-addon-api/nothing.a.ar-file-list
+.../sharp@0.34.5/node_modules/sharp install:   COPY Release/nothing.a
+.../sharp@0.34.5/node_modules/sharp install:   TOUCH Release/obj.target/libvips-cpp-8.17.3.stamp
+.../sharp@0.34.5/node_modules/sharp install:   CXX(target) Release/obj.target/sharp-linux-x64/common.o
+.../sharp@0.34.5/node_modules/sharp install: ../common.cc: In function '_GLOBAL__sub_I_common.cc':
+.../sharp@0.34.5/node_modules/sharp install: ../common.cc:1130:1: warning: '/home/jakej/gh/huly-platform-worktrees/review-codex-jh-902460-backlog-c1-abe6f386/common/temp/node_modules/.pnpm/sharp@0.34.5/node_modules/sharp/src/build/Release/obj.target/sharp-linux-x64/common.gcda' profile count data file not found [-Wmissing-profile]
+.../sharp@0.34.5/node_modules/sharp install:  1130 | }  // namespace sharp
+.../sharp@0.34.5/node_modules/sharp install:       | ^
+.../node_modules/puppeteer postinstall: Done
+.../sharp@0.34.5/node_modules/sharp install:   CXX(target) Release/obj.target/sharp-linux-x64/metadata.o
+.../sharp@0.34.5/node_modules/sharp install: ../metadata.cc: In function '_GLOBAL__sub_I_metadata.cc':
+.../sharp@0.34.5/node_modules/sharp install: ../metadata.cc:346:1: warning: '/home/jakej/gh/huly-platform-worktrees/review-codex-jh-902460-backlog-c1-abe6f386/common/temp/node_modules/.pnpm/sharp@0.34.5/node_modules/sharp/src/build/Release/obj.target/sharp-linux-x64/metadata.gcda' profile count data file not found [-Wmissing-profile]
+.../sharp@0.34.5/node_modules/sharp install:   346 | }
+.../sharp@0.34.5/node_modules/sharp install:       | ^
+.../sharp@0.34.5/node_modules/sharp install:   CXX(target) Release/obj.target/sharp-linux-x64/stats.o
+.../sharp@0.34.5/node_modules/sharp install: ../stats.cc: In member function 'std::__new_allocator<ChannelStats>::allocate(unsigned long, void const*)':
+.../sharp@0.34.5/node_modules/sharp install: ../stats.cc:186:1: warning: '/home/jakej/gh/huly-platform-worktrees/review-codex-jh-902460-backlog-c1-abe6f386/common/temp/node_modules/.pnpm/sharp@0.34.5/node_modules/sharp/src/build/Release/obj.target/sharp-linux-x64/stats.gcda' profile count data file not found [-Wmissing-profile]
+.../sharp@0.34.5/node_modules/sharp install:   186 | }
+.../sharp@0.34.5/node_modules/sharp install:       | ^
+.../sharp@0.34.5/node_modules/sharp install:   CXX(target) Release/obj.target/sharp-linux-x64/operations.o
+.../sharp@0.34.5/node_modules/sharp install: ../operations.cc: In function 'std::__fill_a1<double*, double>(double*, double*, double const&)void':
+.../sharp@0.34.5/node_modules/sharp install: ../operations.cc:499:1: warning: '/home/jakej/gh/huly-platform-worktrees/review-codex-jh-902460-backlog-c1-abe6f386/common/temp/node_modules/.pnpm/sharp@0.34.5/node_modules/sharp/src/build/Release/obj.target/sharp-linux-x64/operations.gcda' profile count data file not found [-Wmissing-profile]
+.../sharp@0.34.5/node_modules/sharp install:   499 | }  // namespace sharp
+.../sharp@0.34.5/node_modules/sharp install:       | ^
+.../sharp@0.34.5/node_modules/sharp install:   CXX(target) Release/obj.target/sharp-linux-x64/pipeline.o
+.../sharp@0.34.5/node_modules/sharp install: ../pipeline.cc: In member function 'std::__new_allocator<std::__detail::_Hash_node_base*>::allocate(unsigned long, void const*)':
+.../sharp@0.34.5/node_modules/sharp install: ../pipeline.cc:1814:1: warning: '/home/jakej/gh/huly-platform-worktrees/review-codex-jh-902460-backlog-c1-abe6f386/common/temp/node_modules/.pnpm/sharp@0.34.5/node_modules/sharp/src/build/Release/obj.target/sharp-linux-x64/pipeline.gcda' profile count data file not found [-Wmissing-profile]
+.../sharp@0.34.5/node_modules/sharp install:  1814 | }
+.../sharp@0.34.5/node_modules/sharp install:       | ^
+.../sharp@0.34.5/node_modules/sharp install:   CXX(target) Release/obj.target/sharp-linux-x64/utilities.o
+.../sharp@0.34.5/node_modules/sharp install: ../utilities.cc: In member function 'std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::_M_check_length(unsigned long, unsigned long, char const*) const':
+.../sharp@0.34.5/node_modules/sharp install: ../utilities.cc:282:1: warning: '/home/jakej/gh/huly-platform-worktrees/review-codex-jh-902460-backlog-c1-abe6f386/common/temp/node_modules/.pnpm/sharp@0.34.5/node_modules/sharp/src/build/Release/obj.target/sharp-linux-x64/utilities.gcda' profile count data file not found [-Wmissing-profile]
+.../sharp@0.34.5/node_modules/sharp install:   282 | }
+.../sharp@0.34.5/node_modules/sharp install:       | ^
+.../sharp@0.34.5/node_modules/sharp install:   CXX(target) Release/obj.target/sharp-linux-x64/sharp.o
+.../sharp@0.34.5/node_modules/sharp install: In file included from ../../../../../node-addon-api@7.1.1/node_modules/node-addon-api/napi.h:13,
+.../sharp@0.34.5/node_modules/sharp install:                  from ../sharp.cc:8:
+.../sharp@0.34.5/node_modules/sharp install: ../sharp.cc: In function 'Napi::details::AttachData<Napi::details::CallbackData<void (*)(Napi::CallbackInfo const&), void>, &(void Napi::details::default_finalizer<Napi::details::CallbackData<void (*)(Napi::CallbackInfo const&), void> >(napi_env__*, void*, void*))>(napi_env__*, napi_value__*, Napi::details::CallbackData<void (*)(Napi::CallbackInfo const&), void>*, void*)napi_status':
+.../sharp@0.34.5/node_modules/sharp install: /tmp/jake-harness-workers/harness-brief-review-9rUQvt07/.cache/node-gyp/26.10.0/include/node/node_api.h:79:54: warning: '/home/jakej/gh/huly-platform-worktrees/review-codex-jh-902460-backlog-c1-abe6f386/common/temp/node_modules/.pnpm/sharp@0.34.5/node_modules/sharp/src/build/Release/obj.target/sharp-linux-x64/sharp.gcda' profile count data file not found [-Wmissing-profile]
+.../sharp@0.34.5/node_modules/sharp install:    79 |   NAPI_MODULE_INIT() { return regfunc(env, exports); }
+.../sharp@0.34.5/node_modules/sharp install:       |                                                      ^
+.../sharp@0.34.5/node_modules/sharp install:   SOLINK_MODULE(target) Release/obj.target/sharp-linux-x64.node
+.../sharp@0.34.5/node_modules/sharp install:   COPY Release/sharp-linux-x64.node
+.../sharp@0.34.5/node_modules/sharp install:   TOUCH Release/obj.target/copy-dll.stamp
+.../sharp@0.34.5/node_modules/sharp install: make: Leaving directory '/home/jakej/gh/huly-platform-worktrees/review-codex-jh-902460-backlog-c1-abe6f386/common/temp/node_modules/.pnpm/sharp@0.34.5/node_modules/sharp/src/build'
+.../sharp@0.34.5/node_modules/sharp install: gyp info ok 
+.../sharp@0.34.5/node_modules/sharp install: Done
+.../node_modules/electron postinstall: Done
+.../node_modules/svelte-preprocess postinstall$ echo "[svelte-preprocess] Don't forget to install the preprocessors packages that will be used: sass, stylus, less, postcss & postcss-load-config, coffeescript, pug, etc..."
+.../node_modules/svelte-preprocess postinstall: [svelte-preprocess] Don't forget to install the preprocessors packages that will be used: sass, stylus, less, postcss & postcss-load-config, coffeescript, pug, etc...
+.../node_modules/svelte-preprocess postinstall: Done
+ WARN  Issues with peer dependencies found
+../../desktop
+└─┬ livekit-client 2.15.14
+  └── ✕ missing peer @types/dom-mediacapture-record@^1
+Peer dependencies that should be installed:
+  @types/dom-mediacapture-record@^1
+
+../../desktop-package
+└─┬ electron-builder 25.1.8
+  ├─┬ dmg-builder 25.1.8
+  │ └─┬ app-builder-lib 25.1.8
+  │   └── ✕ missing peer electron-builder-squirrel-windows@25.1.8
+  └─┬ app-builder-lib 25.1.8
+    └── ✕ missing peer electron-builder-squirrel-windows@25.1.8
+Peer dependencies that should be installed:
+  electron-builder-squirrel-windows@25.1.8
+
+../../plugins/love-resources
+├─┬ livekit-client 2.15.14
+│ └── ✕ missing peer @types/dom-mediacapture-record@^1
+└─┬ @livekit/track-processors 0.5.8
+  └── ✕ missing peer @types/dom-mediacapture-transform@^0.1.9
+Peer dependencies that should be installed:
+  @types/dom-mediacapture-record@^1
+  @types/dom-mediacapture-transform@^0.1.9
+
+../../qms-desktop-package
+└─┬ electron-builder 25.1.8
+  └── ✕ missing peer electron-builder-squirrel-windows@25.1.8
+Peer dependencies that should be installed:
+  electron-builder-squirrel-windows@25.1.8
+Done in 2m 46.5s using pnpm v10.15.1
+
+
+
+[32mRush install finished successfully. (2 minutes 56.6 seconds)[39m
