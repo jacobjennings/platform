@@ -147,9 +147,13 @@ direct test of the changed `utils.ts`.
 | --- | ---: | ---: | ---: | ---: | ---: |
 | `foundations/server/packages/postgres/src/__tests__/utils.spec.ts` | 1 | 82 | 82 | 0 | 0 |
 
-`gate/isolated_run.py` could not run here: this checkout has no `harness.toml`
-and `HARNESS_CONFIG` names no settings file for it, so the runner refuses. The
-record in `gate-results.jsonl` is the worker's record of the jest run on tip
+`gate/isolated_run.py` was tried on this tip with
+`HARNESS_CONFIG=/home/jakej/gh/jake-harness/harness.toml`. It applied the
+jake-harness default TypeScript runner (`node --test`) because huly-platform
+has no `[[tests.runners]]` settings, and that runner cannot load this jest file
+(`ERR_MODULE_NOT_FOUND` on `src/utils`). The card says the jake-harness test
+rules do not apply to this fork, so the jest run is the record here. The record
+in `gate-results.jsonl` is the worker's record of that jest run on tip
 `cc88478b1`, in the same shape as earlier cards.
 
 Test setup: `rush install` needed `PUPPETEER_SKIP_DOWNLOAD=1` because the
@@ -176,7 +180,7 @@ succeeded. The test ran with the offline board settings at
 - `docs/reports/jh-902563-backlog-c1/` (report pointer, evidence, gate record)
 - `docs/harness/reports/jh-902563-backlog-c1/report.md`
 
-RECOMMENDATIONS
+## RECOMMENDATIONS
 
 - Change the harness snapshot read so the comments and attachments sections are
   scoped to the project or fetched by card id. That removes the repeated
