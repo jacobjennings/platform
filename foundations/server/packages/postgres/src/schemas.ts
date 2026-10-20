@@ -308,6 +308,12 @@ export interface DomainIndexDefinition {
   columns: string
   /** Access method for CREATE INDEX ... USING. Btree when unset. */
   indexType?: 'btree' | 'gin' | 'gist' | 'brin' | 'hash'
+  /**
+   * Extra columns carried in the index. A column the query filters on belongs
+   * here when it is not part of the sort order, so the filter runs on the index
+   * and the primary key lookup only fetches the matching rows.
+   */
+  storing?: string
 }
 
 /**
@@ -323,6 +329,18 @@ export const domainIndexDefinitions: Record<string, DomainIndexDefinition[]> = {
     {
       name: 'tags_workspace_attachedto_id',
       columns: '"workspaceId", "attachedTo", _id'
+    }
+  ],
+  activity: [
+    {
+      // The board snapshot reads the comments section by the `collection` JSON
+      // key. The key has no column, so the query filters on
+      // data#>>'{collection}'. This index orders the matching rows by _id and
+      // carries _class so the class filter runs before the row lookup. See
+      // docs/harness/reports/jh-902563-backlog-c1/report.md.
+      name: 'activity_workspace_collection_id',
+      columns: '"workspaceId", (data#>>\'{collection}\'), _id',
+      storing: '_class'
     }
   ]
 }
