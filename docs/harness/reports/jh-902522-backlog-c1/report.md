@@ -102,10 +102,12 @@ cards, 2,063 label references, about 5,600 comments, 22 statuses, 75 label
 catalog rows. One client process, one native connection, page size 50 for the
 client walk and 1,000 for the snapshot. Three samples per read, so a reported
 p95 is the largest of three samples: this is an exploratory tail, not a
-statistical one. Host was shared with another local board-load stack during the
-concurrent run; the quiet run below is the one used for CPU.
+statistical one. A second board-load stack from another worktree
+(`jh-902520-backlog-c1`, docker project created 16:54 UTC) was running on the
+host during the concurrent run. The CPU figures are the transactor's own CPU
+time, which another process does not charge to it.
 
-Commands (both pushed commits):
+Commands used:
 
 ```sh
 BOARD_LOAD_NODE=$HOME/.local/opt/node-v22.23.3-linux-x64/bin/node \
