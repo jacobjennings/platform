@@ -13,9 +13,11 @@
 // limitations under the License.
 //
 
+import { createHash } from 'node:crypto'
 import type { LoginInfoWithWorkspaces } from '@hcengineering/account-client'
-import {
+import core, {
   generateId,
+  matchQuery,
   TxProcessor,
   type Account,
   type AccountUuid,
@@ -37,6 +39,12 @@ import {
   type SearchQuery,
   type SearchResult,
   type SessionData,
+  type SnapshotChange,
+  type SnapshotFailure,
+  type SnapshotPage,
+  type SnapshotRequest,
+  type SnapshotSection,
+  type SnapshotSectionPage,
   type SocialId,
   type Space,
   type Timestamp,
@@ -63,6 +71,90 @@ import {
 import { type Token } from '@hcengineering/server-token'
 
 const useReserveContext = (process.env.USE_RESERVE_CTX ?? 'true') === 'true'
+
+// A snapshot request is bounded so one call cannot ask for an unbounded board.
+const SNAPSHOT_MAX_SECTIONS = 16
+const SNAPSHOT_DEFAULT_LIMIT = 200
+const SNAPSHOT_MAX_LIMIT = 1000
+// Rows reported per section in the final change set.
+const SNAPSHOT_CHANGES_LIMIT = 2000
+const SNAPSHOT_KEY = /^[a-zA-Z0-9_.-]{1,64}$/
+
+interface SnapshotCursorState {
+  // Start time shared by every page of the live read.
+  v: Timestamp
+  // Space the read is scoped to.
+  s: Ref<Space>
+  // Section keys the token was issued for, in request order.
+  k: string[]
+  // Fingerprint of the normalized sections.
+  q: string
+  // Last row identity read per section.
+  c: Record<string, Ref<Doc>>
+  // Exact row count per section, once known.
+  t: Record<string, number>
+}
+
+function encodeSnapshotCursor (state: SnapshotCursorState): string {
+  return Buffer.from(JSON.stringify(state), 'utf8').toString('base64url')
+}
+
+function isValidTimestamp (value: unknown): value is Timestamp {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value > 0
+}
+
+function decodeSnapshotCursor (cursor: string): SnapshotCursorState {
+  let parsed: any
+  try {
+    parsed = JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8'))
+  } catch (err) {
+    throw new Error('The snapshot continuation token is not valid')
+  }
+  if (
+    parsed === null ||
+    typeof parsed !== 'object' ||
+    !isValidTimestamp(parsed.v) ||
+    typeof parsed.s !== 'string' ||
+    !Array.isArray(parsed.k) ||
+    parsed.k.some((key: unknown) => typeof key !== 'string') ||
+    typeof parsed.q !== 'string' ||
+    parsed.c === null ||
+    typeof parsed.c !== 'object' ||
+    Array.isArray(parsed.c) ||
+    Object.values(parsed.c).some((value) => typeof value !== 'string') ||
+    parsed.t === null ||
+    typeof parsed.t !== 'object' ||
+    Array.isArray(parsed.t) ||
+    Object.values(parsed.t).some((value) => typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0)
+  ) {
+    throw new Error('The snapshot continuation token is not valid')
+  }
+  parsed.c = Object.assign(Object.create(null), parsed.c)
+  parsed.t = Object.assign(Object.create(null), parsed.t)
+  return parsed as SnapshotCursorState
+}
+
+// A scoped section is always constrained to the request space. A caller cannot
+// widen it by passing another space in its own query.
+function snapshotSectionQuery (section: SnapshotSection, space: Ref<Space>): DocumentQuery<Doc> {
+  if (section.scoped === false) return section.query
+  if (section.query.space !== undefined && section.query.space !== space) {
+    throw new Error(`Snapshot section ${section.key} asks for a space outside the request space`)
+  }
+  return { ...section.query, space }
+}
+
+function withSnapshotCursor (query: DocumentQuery<Doc>, cursor: Ref<Doc>): DocumentQuery<Doc> {
+  const existing = query._id
+  const idQuery =
+    existing !== null && typeof existing === 'object' && !Array.isArray(existing)
+      ? { ...(existing as object) }
+      : existing === undefined ? {} : { $in: [existing] }
+  const lowerBound = (idQuery as { $gt?: Ref<Doc> }).$gt
+  // The storage adapter supports ordered string identities, while QuerySelector
+  // types comparison operators for numbers only.
+  return { ...query, _id: { ...idQuery, $gt: lowerBound !== undefined && lowerBound > cursor ? lowerBound : cursor } } as unknown as DocumentQuery<Doc>
+}
 
 /**
  * @public
@@ -238,6 +330,250 @@ export class ClientSession implements Session {
     } catch (err) {
       await ctx.sendError(ctx.requestId, 'Failed to findAll', unknownError(err))
       ctx.ctx.error('failed to findAll', { err })
+    }
+  }
+
+  async findSnapshot (ctx: ClientSessionCtx, request: SnapshotRequest): Promise<void> {
+    try {
+      const result = await this.counter.withCounter('findSnapshot', 1, () => this.findSnapshotRaw(ctx, request))
+      await this.counter.withCounter('clientSendMemory', this.estimateSize(result), () =>
+        ctx.sendResponse(ctx.requestId, result)
+      )
+    } catch (err) {
+      await ctx.sendError(ctx.requestId, 'Failed to findSnapshot', unknownError(err))
+      ctx.ctx.error('failed to findSnapshot', { err })
+    }
+  }
+
+  /**
+   * One bounded page of a live multi-section read.
+   *
+   * The first page records the server start time and section counts. Each
+   * subsequent page reads current data in identity order. The token binds the
+   * section queries and carries their last identities. This is not an atomic
+   * database snapshot. Counts can change while the read is in progress.
+   *
+   * With includeChanges, the final page reports current rows and transaction
+   * identities observed since the start time. Clients reconcile these hints by
+   * section and identity, then fetch matching documents they have not received.
+   * Timestamp-based hints are not a commit-order watermark. A bounded change
+   * set that reaches its cap is explicitly partial and requires a fresh read.
+   *
+   * Every query goes through the same pipeline as `findAll`, so workspace
+   * membership and per-space read security apply unchanged. Scoped sections are
+   * additionally constrained to the request space, so the call cannot widen a
+   * read into another project.
+   *
+   * A failed section is reported in `failures` and does not advance its cursor,
+   * so a continuation can retry it. Clients must inspect partial and failures
+   * before continuing. The other sections still return rows.
+   */
+  async findSnapshotRaw (ctx: ClientSessionCtx, request: SnapshotRequest): Promise<SnapshotPage> {
+    this.lastRequest = Date.now()
+    this.total.find++
+    this.current.find++
+    this.includeSessionContext(ctx)
+    const hierarchy = ctx.pipeline.context.hierarchy
+
+    if (request === null || typeof request !== 'object') {
+      throw new Error('A snapshot request is required')
+    }
+    if (typeof request.space !== 'string' || request.space === '') {
+      throw new Error('A snapshot space is required')
+    }
+    const space = request.space
+    const sections = request.sections
+    if (!Array.isArray(sections) || sections.length === 0) {
+      throw new Error('A snapshot request needs at least one section')
+    }
+    if (sections.length > SNAPSHOT_MAX_SECTIONS) {
+      throw new Error(`A snapshot request allows at most ${SNAPSHOT_MAX_SECTIONS} sections`)
+    }
+    const keys: string[] = []
+    const normalized: SnapshotSection[] = sections.map((section) => {
+      if (section === null || typeof section !== 'object') {
+        throw new Error('A snapshot section is required')
+      }
+      if (typeof section.key !== 'string' || !SNAPSHOT_KEY.test(section.key)) {
+        throw new Error('A snapshot section key must be 1 to 64 letters, digits, dots, dashes or underscores')
+      }
+      if (keys.includes(section.key)) {
+        throw new Error(`Snapshot section ${section.key} is repeated`)
+      }
+      keys.push(section.key)
+      if (typeof section._class !== 'string' || !hierarchy.hasClass(section._class)) {
+        throw new Error(`Snapshot section ${section.key} names an unknown class`)
+      }
+      if (section.query === null || typeof section.query !== 'object' || Array.isArray(section.query)) {
+        throw new Error(`Snapshot section ${section.key} needs a query object`)
+      }
+      for (const key of Object.keys(section.query)) {
+        if (key.startsWith('$')) {
+          throw new Error(`Snapshot section ${section.key} query cannot use the top level operator ${key}`)
+        }
+      }
+      if (section.limit !== undefined && (typeof section.limit !== 'number' || !Number.isFinite(section.limit))) {
+        throw new Error(`Snapshot section ${section.key} needs a finite numeric limit`)
+      }
+      const limit =
+        section.limit === undefined
+          ? SNAPSHOT_DEFAULT_LIMIT
+          : Math.min(Math.max(Math.trunc(section.limit), 1), SNAPSHOT_MAX_LIMIT)
+      return { ...section, limit, query: { ...section.query } }
+    })
+
+    const fingerprint = createHash('sha256').update(JSON.stringify(normalized)).digest('hex')
+    const token = request.cursor === undefined ? undefined : decodeSnapshotCursor(request.cursor)
+    if (token !== undefined) {
+      if (token.q !== fingerprint || token.s !== space || token.k.length !== keys.length || token.k.some((key, index) => key !== keys[index])) {
+        throw new Error('The snapshot continuation token belongs to another read')
+      }
+    }
+    const state: SnapshotCursorState = token ?? { v: Date.now(), s: space, k: keys, q: fingerprint, c: Object.create(null), t: Object.create(null) }
+
+    // The pipeline applies the workspace and space read rules. A space the
+    // account cannot read is therefore not found here either.
+    const spaces = await ctx.pipeline.findAll(ctx.ctx, core.class.Space, { _id: space }, { limit: 1, showArchived: true })
+    if (spaces.length === 0) {
+      throw new Error('The snapshot space is not visible to this account')
+    }
+
+    // Section scope is a request contract, not a read that can partially fail:
+    // resolve every section query once, before any rows are read, so a request
+    // that points a scoped section at another space is refused as a whole.
+    const scopedQueries = normalized.map((section) => snapshotSectionQuery(section, space))
+
+    const failures: SnapshotFailure[] = []
+    const pages: SnapshotSectionPage[] = []
+    let retryFailedRead = false
+    for (const [index, section] of normalized.entries()) {
+      if (section.firstPageOnly === true && state.t[section.key] !== undefined) {
+        pages.push({ key: section.key, docs: [], more: false })
+        continue
+      }
+      try {
+        const first = state.c[section.key] === undefined
+        const base = scopedQueries[index]
+        const query = first ? base : withSnapshotCursor(base, state.c[section.key])
+        const options: FindOptions<Doc> = {
+          limit: section.limit,
+          sort: { _id: 1 },
+          showArchived: true,
+          total: first
+        }
+        const docs = await ctx.pipeline.findAll(ctx.ctx, section._class, query, options)
+        if (first) {
+          state.t[section.key] = docs.total ?? docs.length
+        }
+        if (docs.length > 0) {
+          state.c[section.key] = docs[docs.length - 1]._id
+        }
+        if (section.firstPageOnly === true && docs.length === section.limit) {
+          failures.push({ key: section.key, message: 'The first-page-only section reached its row limit and may be incomplete' })
+        }
+        pages.push({
+          key: section.key,
+          docs,
+          ...(first ? { total: state.t[section.key] } : {}),
+          more: section.firstPageOnly !== true && docs.length === section.limit
+        })
+      } catch (err: any) {
+        retryFailedRead = true
+        failures.push({ key: section.key, message: String(err?.message ?? err) })
+        pages.push({ key: section.key, docs: [], more: false })
+      }
+    }
+
+    const anyMore = pages.some((page) => page.more) || retryFailedRead
+    let changes: SnapshotChange[] | undefined
+    if (request.includeChanges === true && !anyMore) {
+      changes = []
+      for (const [index, section] of normalized.entries()) {
+        if (section.firstPageOnly === true) continue
+        try {
+          const base = scopedQueries[index]
+          const modified = await ctx.pipeline.findAll(
+            ctx.ctx,
+            section._class,
+            { ...(section.scoped === false ? {} : { space }), modifiedOn: { $gte: state.v } },
+            { limit: SNAPSHOT_CHANGES_LIMIT, sort: { _id: 1 }, showArchived: true }
+          )
+          if (modified.length === SNAPSHOT_CHANGES_LIMIT) {
+            failures.push({ key: section.key, message: 'The snapshot change set reached its row limit and may be incomplete' })
+          }
+          for (const doc of modified) {
+            changes.push({
+              key: section.key,
+              id: doc._id,
+              matches: matchQuery([doc], base, section._class, hierarchy).length > 0,
+              removed: false
+            })
+          }
+          // A row can leave the section filter or move to another space. Read
+          // transaction identities in the original space as well as current rows.
+          const transactions = await ctx.pipeline.findAll(
+            ctx.ctx,
+            core.class.TxCUD,
+            {
+              _class: { $in: [core.class.TxCreateDoc, core.class.TxUpdateDoc, core.class.TxMixin, core.class.TxRemoveDoc] },
+              modifiedOn: { $gte: state.v },
+              objectClass: { $in: hierarchy.getDescendants(section._class) },
+              ...(section.scoped === false ? {} : { objectSpace: space })
+            },
+            { limit: SNAPSHOT_CHANGES_LIMIT, sort: { _id: 1 }, showArchived: true }
+          )
+          if (transactions.length === SNAPSHOT_CHANGES_LIMIT) {
+            failures.push({ key: section.key, message: 'The snapshot transaction set reached its row limit and may be incomplete' })
+          }
+          const ids = [...new Set(transactions.map((tx) => tx.objectId))]
+          if (ids.length > 0) {
+            // Recheck through the read pipeline. A move to an inaccessible space
+            // must not return the destination document.
+            const current = await ctx.pipeline.findAll(
+              ctx.ctx,
+              section._class,
+              { ...(section.scoped === false ? {} : { space }), _id: { $in: ids } },
+              { limit: SNAPSHOT_CHANGES_LIMIT, showArchived: true }
+            )
+            const byId = new Map(current.map((doc) => [doc._id, doc]))
+            const removed = new Set(transactions
+              .filter((tx) => tx._class === core.class.TxRemoveDoc).map((tx) => tx.objectId))
+            for (const id of ids) {
+              const doc = byId.get(id)
+              changes.push({
+                key: section.key,
+                id,
+                matches: doc !== undefined && matchQuery([doc], base, section._class, hierarchy).length > 0,
+                removed: doc === undefined && removed.has(id)
+              })
+            }
+          }
+        } catch (err: any) {
+          failures.push({ key: section.key, message: `changes: ${String(err?.message ?? err)}` })
+        }
+      }
+    }
+
+    const uniqueChanges = changes === undefined
+      ? undefined
+      : [...new Map(changes.map((change) => [JSON.stringify([change.key, change.id]), change])).values()]
+    const changeCounts = new Map<string, number>()
+    const boundedChanges = uniqueChanges?.filter((change) => {
+      const count = (changeCounts.get(change.key) ?? 0) + 1
+      changeCounts.set(change.key, count)
+      if (count === SNAPSHOT_CHANGES_LIMIT + 1) {
+        failures.push({ key: change.key, message: 'The combined snapshot change set exceeded its row limit and is incomplete' })
+      }
+      return count <= SNAPSHOT_CHANGES_LIMIT
+    })
+    return {
+      version: state.v,
+      space,
+      sections: pages,
+      ...(boundedChanges !== undefined ? { changes: boundedChanges } : {}),
+      ...(anyMore ? { next: encodeSnapshotCursor(state) } : {}),
+      failures,
+      partial: failures.length > 0
     }
   }
 

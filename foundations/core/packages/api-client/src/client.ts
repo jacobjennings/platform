@@ -27,6 +27,8 @@ import {
   type ModelDb,
   type Ref,
   type Space,
+  type SnapshotPage,
+  type SnapshotRequest,
   type TxResult,
   type WithLookup,
   AttachedData,
@@ -157,6 +159,13 @@ class PlatformClientImpl implements PlatformClient {
     options?: FindOptions<T>
   ): Promise<FindResult<T>> {
     return await this.client.findAll(_class, query, options)
+  }
+
+  async findSnapshot (request: SnapshotRequest): Promise<SnapshotPage> {
+    if (this.connection.findSnapshot === undefined) {
+      throw new Error('The connected server does not support snapshot reads')
+    }
+    return await this.connection.findSnapshot(request)
   }
 
   async close (): Promise<void> {

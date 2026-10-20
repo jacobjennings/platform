@@ -47,6 +47,8 @@ import core, {
   SearchOptions,
   SearchQuery,
   SearchResult,
+  type SnapshotPage,
+  type SnapshotRequest,
   Timestamp,
   toFindResult,
   Tx,
@@ -981,6 +983,10 @@ class Connection implements ClientConnection {
     }
 
     return result
+  }
+
+  async findSnapshot (request: SnapshotRequest): Promise<SnapshotPage> {
+    return await this.sendRequest({ method: 'findSnapshot', params: [request] })
   }
 
   tx (tx: Tx): Promise<TxResult> {

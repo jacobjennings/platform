@@ -33,6 +33,8 @@ import {
   type ModelDb,
   type Ref,
   type Space,
+  type SnapshotPage,
+  type SnapshotRequest,
   type TxResult,
   type WithLookup
 } from '@hcengineering/core'
@@ -66,6 +68,7 @@ DocOperations &
 CollectionOperations &
 MixinOperations &
 MarkupOperations &
+SnapshotOperations &
 AsyncDisposable
 
 /**
@@ -83,6 +86,14 @@ export interface FindOperations {
     query: DocumentQuery<T>,
     options?: FindOptions<T> | undefined
   ) => Promise<WithLookup<T> | undefined>
+}
+
+/**
+ * @public
+ */
+export interface SnapshotOperations {
+  // One bounded page of a versioned, multi-section read.
+  findSnapshot: (request: SnapshotRequest) => Promise<SnapshotPage>
 }
 
 /**
