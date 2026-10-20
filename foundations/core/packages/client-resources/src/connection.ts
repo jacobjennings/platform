@@ -181,7 +181,7 @@ class Connection implements ClientConnection {
     readonly user: PersonUuid,
     readonly opt?: ClientFactoryOptions
   ) {
-    if (typeof sessionStorage !== 'undefined') {
+    if (typeof window !== 'undefined' && typeof sessionStorage !== 'undefined') {
       // Find local session id in session storage only if user refresh a page.
       const sKey = 'session.id.' + this.url
       let sessionId = sessionStorage.getItem(sKey) ?? undefined
