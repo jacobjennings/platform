@@ -40,11 +40,13 @@ The test-selection search was `rg -n 'addSchema\(|getSchemaIndexDefinitions|crea
 
 The worker reports storage.test.ts as 8 failures from 8 cases with AggregateError and no running database fixture. Its exit status and tested tree are not recorded in a reusable gate row. integration.test.ts was not run. These are worker statements, not reviewer results or named merge checks.
 
-The prose checker exited 0 with no warnings on the provisional report. The final checker exited 0 with three advisory warnings: "possible-jargon: Explain 'ReviewMerge' in this sentence if it is a project term.", "sentence-length: This sentence has 63 words. The warning limit is 45.", and "possible-jargon: Explain 'AggregateError' in this sentence if it is a project term."
+The prose checker exited 0 with no warnings on the provisional report. The draft checker exited 0 with three advisory warnings: "possible-jargon: Explain 'ReviewMerge' in this sentence if it is a project term.", "sentence-length: This sentence has 63 words. The warning limit is 45.", and "possible-jargon: Explain 'AggregateError' in this sentence if it is a project term."
+
+The later scan also exited 0. It repeated the three warnings above and flagged the quoted names again. Its additional warnings were "possible-jargon: Explain 'ReviewMerge' in this sentence if it is a project term.", "possible-jargon: Explain 'AggregateError' in this sentence if it is a project term.", and "paragraph-length: This paragraph has 102 words. The warning limit is 90." These are advisory prose warnings.
 
 ## Could not check
 
-The complete interleaved three-repetition matrix, the attribution of the remaining read difference and the shipped-set high-concurrency behavior remain unchecked. The local SQL catalog captures and size capture were not found alongside the reviewed reports. The claimed 62 tables, 197 secondary indexes, 585 index-column rows, 145.2 MB subtotal and build durations remain worker-reported figures. I did not independently reproduce them. No local stack, browser, deployment or live board connection was started.
+The complete interleaved three-repetition matrix, the attribution of the remaining read difference and the shipped-set high-concurrency behavior remain unchecked. The local SQL catalog captures and size capture were not found alongside the reviewed reports. The claimed 62 tables, 197 secondary indexes, 585 index-column rows, 145.2 MB subtotal and build durations remain worker-reported figures. I did not independently reproduce them. No local stack, browser or deployment was started. The outcome step attempted a board-stage command despite the offline environment. No reply or stage read-back was obtained, so a board change cannot be confirmed or excluded.
 
 ## Owner rulings
 
@@ -56,7 +58,13 @@ These quotations come from the supplied brief. They are separate from the assess
 
 ## Merge record
 
-The report is committed and pushed before the merge. Only the dedicated harness worktree's orchestrator/harness-reviewmerge.py performs the merge. Merge confirmation and the frozen_files record will be appended after it returns.
+The applied report-fix tip is 4955da3af36ad22b725d7ff2dc3d757d5d140afc. It was pushed before the merge. The dedicated harness worktree's orchestrator/harness-reviewmerge.py exited 0 and pushed merge commit d66ec41654a3cff3f3a8860b0ae57ca5ffda05e2 to jj/activity-feed. The merge has no conflicts. The tested and pushed hashes match. No named check ran, so the records folder contains no gate-results.jsonl. The complete reviewmerge.json is saved beside this report.
+
+The frozen-file record is `"frozen_files": {"paths": ["orchestrator/merge-train.py", "orchestrator/train-queue.py"], "differing_before_merge": [], "restored": [], "differing_after_merge": []}`. No restore commit was needed.
+
+The outcome step exited 0 after confirming ancestry against a fresh fetch. It queued "merged with critical caveats" in the launcher's worker/session-outcome.json. It also reported "the stage is not set: board stage printed no reply:".
+
+The outcome helper launched its board-stage child despite HULY_BOARD_CONFIG being set to the refused offline port. Inspection showed the positional CLI does not read that environment setting. I stopped the exact child PID 1803 that this run started. No stage read-back was obtained. The report makes no claim that the card moved or that the attempted helper made no network contact. This harness behavior is outside the reviewed platform range. No browser process was started, so no browser cleanup was needed.
 
 ## Failing after merge
 
@@ -70,4 +78,4 @@ The report is committed and pushed before the merge. Only the dedicated harness 
 
 No follow-on is declared by this run. The measurements support no performance improvement claim. Completing the controlled matrix and isolating the remaining project-read difference would supply the missing acceptance evidence.
 
-NOT MERGED
+MERGED

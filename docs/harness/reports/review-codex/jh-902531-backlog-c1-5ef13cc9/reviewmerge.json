@@ -1,0 +1,42 @@
+{
+  "tip": "4955da3af36ad22b725d7ff2dc3d757d5d140afc",
+  "branch": "jj/activity-feed",
+  "retries": 2,
+  "lane_time_limit_seconds": 4500,
+  "worker_record": null,
+  "resolved": null,
+  "lane_wait_seconds": 0.0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "base": "13d7c1e7418474158f03250e17fd68fb28da0877",
+      "tested": "d66ec41654a3cff3f3a8860b0ae57ca5ffda05e2",
+      "outcome": "pushed",
+      "conflicted": [],
+      "reviewer_changed": [],
+      "items": [],
+      "setup_failed": null,
+      "setup_tree_change": null,
+      "failing_checks": []
+    }
+  ],
+  "tested": "d66ec41654a3cff3f3a8860b0ae57ca5ffda05e2",
+  "pushed": "d66ec41654a3cff3f3a8860b0ae57ca5ffda05e2",
+  "outcome": "pushed",
+  "handoffs": [],
+  "unowned_handoff": null,
+  "handoff_unread": [],
+  "failing_after_merge": [],
+  "failing_checks": [],
+  "setup_failed": null,
+  "setup_tree_change": null,
+  "frozen_files": {
+    "paths": [
+      "orchestrator/merge-train.py",
+      "orchestrator/train-queue.py"
+    ],
+    "differing_before_merge": [],
+    "restored": [],
+    "differing_after_merge": []
+  }
+}
