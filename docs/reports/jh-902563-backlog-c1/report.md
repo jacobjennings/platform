@@ -84,14 +84,18 @@ Page 9 is the page where the comments stop being dense. Raw output is in
 
 | | rows decoded from KV | execution |
 | --- | ---: | ---: |
-| before | 164,275 | 118 ms |
+| before | 164,295 | 118 ms |
 | after | 3,653 | 13 ms |
 
 The after plan scans `activity@activity_workspace_collection_id` with
 `spans: [/'...'/'comments'/e'<cursor>\x00' - /'...'/'comments']`, filters
 `_class` on the index, then joins the primary key for 1,500 rows and the
 `space` table for 1,000. The before plan scans `activity@activity_pkey` from
-the cursor and decodes the JSON path on 164,275 rows to find 1,000 matches.
+the cursor and decodes the JSON path on 164,190 activity rows to find 1,000 matches.
+
+The separate per-page capture records 164,275 total KV rows on page 9.
+The raw before plan above records 164,295 total KV rows, including 105 space
+rows. These are different executions.
 
 Per-page rows and times for all 21 pages are in `per-page-before.tsv` and
 `per-page-after.tsv`.
@@ -180,6 +184,13 @@ succeeded. The test ran with the offline board settings at
 - `docs/reports/jh-902563-backlog-c1/` (report pointer, evidence, gate record)
 - `docs/harness/reports/jh-902563-backlog-c1/report.md`
 
+## Review correction
+
+The reviewer changed the emitted covering-column clause from `STORING` to
+`INCLUDE` for PostgreSQL compatibility. CockroachDB treats `INCLUDE` as an
+alias for `STORING`. The SQL capture and timings above describe the original
+worker run, not a new run of the reviewer change.
+
 ## RECOMMENDATIONS
 
 - Change the harness snapshot read so the comments and attachments sections are
@@ -191,6 +202,7 @@ succeeded. The test ran with the offline board settings at
 - Consider indexing `activity` on a real `collection` column instead of a JSON
   expression. That needs a migration and a card of its own.
 - The card's evidence says every page scans the whole table. That is true of
-  one page in 21 on this snapshot, page 9, which scans 164,275 of 183,335 rows.
+  one page in 21 on this snapshot, page 9, whose raw before plan scans 164,190 activity rows out of the reported
+  183,335 activity rows.
   The other 20 pages stop early because comments are dense in the early `_id`
   order.
