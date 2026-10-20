@@ -291,7 +291,16 @@ export async function createClient (
   }
   const conn = await ctx.with('connect', {}, () => connect(txHandler), {}, { suspendErrors: true })
 
-  let { mode, current, addition } = await ctx.with('load-model', {}, (ctx) => loadModel(ctx, conn, txPersistence))
+  let modelResult
+  try {
+    modelResult = await ctx.with('load-model', {}, (ctx) => loadModel(ctx, conn, txPersistence))
+  } catch (err) {
+    // A failed model load ends the owning connect. Do not leave its websocket,
+    // pending requests or retry timers behind for a later phase to pay for.
+    await conn.close().catch(() => {})
+    throw err
+  }
+  let { mode, current, addition } = modelResult
   switch (mode) {
     case 'same':
     case 'upgrade':

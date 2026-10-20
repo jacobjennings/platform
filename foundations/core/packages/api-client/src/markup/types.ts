@@ -65,7 +65,8 @@ export interface MarkupOperations {
     objectId: Ref<Doc>,
     objectAttr: string,
     id: MarkupRef,
-    format: MarkupFormat
+    format: MarkupFormat,
+    signal?: AbortSignal
   ) => Promise<string>
 
   /**
@@ -80,7 +81,8 @@ export interface MarkupOperations {
     objectClass: Ref<Class<Doc>>,
     objectAttr: string,
     items: MarkupFetchItem[],
-    format: MarkupFormat
+    format: MarkupFormat,
+    signal?: AbortSignal
   ) => Promise<string[]>
 
   /**
@@ -97,6 +99,7 @@ export interface MarkupOperations {
     objectId: Ref<Doc>,
     objectAttr: string,
     markup: string,
-    format: MarkupFormat
+    format: MarkupFormat,
+    signal?: AbortSignal
   ) => Promise<MarkupRef>
 }

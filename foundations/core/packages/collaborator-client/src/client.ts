@@ -70,11 +70,16 @@ export interface GetContentsResponse {
 
 /** @public */
 export interface CollaboratorClient {
-  getMarkup: (document: CollaborativeDoc, source?: Ref<Blob> | null) => Promise<Markup>
-  getMarkups: (items: GetMarkupItem[]) => Promise<Markup[]>
-  createMarkup: (document: CollaborativeDoc, markup: Markup) => Promise<MarkupBlobRef>
-  updateMarkup: (document: CollaborativeDoc, markup: Markup) => Promise<void>
-  copyContent: (source: CollaborativeDoc, target: CollaborativeDoc) => Promise<void>
+  getMarkup: (document: CollaborativeDoc, source?: Ref<Blob> | null, signal?: AbortSignal) => Promise<Markup>
+  getMarkups: (items: GetMarkupItem[], signal?: AbortSignal) => Promise<Markup[]>
+  createMarkup: (document: CollaborativeDoc, markup: Markup, signal?: AbortSignal) => Promise<MarkupBlobRef>
+  updateMarkup: (document: CollaborativeDoc, markup: Markup, signal?: AbortSignal) => Promise<void>
+  copyContent: (
+    source: CollaborativeDoc,
+    target: CollaborativeDoc,
+    content?: Ref<Blob>,
+    signal?: AbortSignal
+  ) => Promise<void>
 }
 
 /** @public */
@@ -90,7 +95,14 @@ class CollaboratorClientImpl implements CollaboratorClient {
     private readonly collaboratorUrl: string
   ) {}
 
-  private async rpc<P, R>(document: CollaborativeDoc, method: string, payload: P): Promise<R> {
+  private async rpc<P, R>(
+    document: CollaborativeDoc,
+    method: string,
+    payload: P,
+    signal?: AbortSignal
+  ): Promise<R> {
+    throwIfAborted(signal)
+
     const workspace = this.workspace
     const documentId = encodeDocumentId(workspace, document)
 
@@ -102,7 +114,8 @@ class CollaboratorClientImpl implements CollaboratorClient {
         Authorization: 'Bearer ' + this.token,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ method, payload })
+      body: JSON.stringify({ method, payload }),
+      signal
     })
 
     if (!res.ok) {
@@ -118,7 +131,7 @@ class CollaboratorClientImpl implements CollaboratorClient {
     return result as R
   }
 
-  async getMarkup (document: CollaborativeDoc, source?: Ref<Blob> | null): Promise<Markup> {
+  async getMarkup (document: CollaborativeDoc, source?: Ref<Blob> | null, signal?: AbortSignal): Promise<Markup> {
     const payload: GetContentRequest = {
       source: source !== null ? source : undefined
     }
@@ -126,15 +139,16 @@ class CollaboratorClientImpl implements CollaboratorClient {
     const res = await retry(
       3,
       async () => {
-        return await this.rpc<GetContentRequest, GetContentResponse>(document, 'getContent', payload)
+        return await this.rpc<GetContentRequest, GetContentResponse>(document, 'getContent', payload, signal)
       },
-      50
+      50,
+      signal
     )
 
     return res.content[document.objectAttr] ?? ''
   }
 
-  async getMarkups (items: GetMarkupItem[]): Promise<Markup[]> {
+  async getMarkups (items: GetMarkupItem[], signal?: AbortSignal): Promise<Markup[]> {
     if (items.length === 0) {
       return []
     }
@@ -147,15 +161,21 @@ class CollaboratorClientImpl implements CollaboratorClient {
     const res = await retry(
       3,
       async () => {
-        return await this.rpc<GetContentsRequest, GetContentsResponse>(items[0].document, 'getContents', { documents })
+        return await this.rpc<GetContentsRequest, GetContentsResponse>(
+          items[0].document,
+          'getContents',
+          { documents },
+          signal
+        )
       },
-      50
+      50,
+      signal
     )
 
     return items.map(({ document }, i) => res.contents[documents[i].documentId]?.[document.objectAttr] ?? '')
   }
 
-  async createMarkup (document: CollaborativeDoc, markup: Markup): Promise<MarkupBlobRef> {
+  async createMarkup (document: CollaborativeDoc, markup: Markup, signal?: AbortSignal): Promise<MarkupBlobRef> {
     const content = {
       [document.objectAttr]: markup
     }
@@ -163,15 +183,16 @@ class CollaboratorClientImpl implements CollaboratorClient {
     const res = await retry(
       3,
       async () => {
-        return await this.rpc<CreateContentRequest, CreateContentResponse>(document, 'createContent', { content })
+        return await this.rpc<CreateContentRequest, CreateContentResponse>(document, 'createContent', { content }, signal)
       },
-      50
+      50,
+      signal
     )
 
     return res.content[document.objectAttr]
   }
 
-  async updateMarkup (document: CollaborativeDoc, markup: Markup): Promise<void> {
+  async updateMarkup (document: CollaborativeDoc, markup: Markup, signal?: AbortSignal): Promise<void> {
     const content = {
       [document.objectAttr]: markup
     }
@@ -179,28 +200,91 @@ class CollaboratorClientImpl implements CollaboratorClient {
     await retry(
       3,
       async () => {
-        await this.rpc<UpdateContentRequest, UpdateContentResponse>(document, 'updateContent', { content })
+        await this.rpc<UpdateContentRequest, UpdateContentResponse>(document, 'updateContent', { content }, signal)
       },
-      50
+      50,
+      signal
     )
   }
 
-  async copyContent (source: CollaborativeDoc, target: CollaborativeDoc, content?: Ref<Blob>): Promise<void> {
-    const markup = await this.getMarkup(source, content)
-    await this.updateMarkup(target, markup)
+  async copyContent (
+    source: CollaborativeDoc,
+    target: CollaborativeDoc,
+    content?: Ref<Blob>,
+    signal?: AbortSignal
+  ): Promise<void> {
+    const markup = await this.getMarkup(source, content, signal)
+    await this.updateMarkup(target, markup, signal)
   }
 }
 
-async function retry<T> (retries: number, op: () => Promise<T>, delay: number = 100): Promise<T> {
+function abortError (signal?: AbortSignal): Error {
+  const reason = signal?.reason
+  if (reason instanceof Error) {
+    return reason
+  }
+  const error = new Error('The operation was aborted')
+  error.name = 'AbortError'
+  return error
+}
+
+function throwIfAborted (signal?: AbortSignal): void {
+  if (signal?.aborted === true) {
+    throw abortError(signal)
+  }
+}
+
+/**
+ * Waits for the retry delay unless the owning call is cancelled. Cancelling
+ * clears the timer, so a timed-out call leaves no retry behind.
+ */
+async function delay (ms: number, signal?: AbortSignal): Promise<void> {
+  throwIfAborted(signal)
+  if (signal === undefined) {
+    await new Promise((resolve) => setTimeout(resolve, ms))
+    return
+  }
+
+  await new Promise<void>((resolve, reject) => {
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const onAbort = (): void => {
+      if (timer !== undefined) {
+        clearTimeout(timer)
+      }
+      reject(abortError(signal))
+    }
+    timer = setTimeout(() => {
+      signal.removeEventListener('abort', onAbort)
+      resolve()
+    }, ms)
+    signal.addEventListener('abort', onAbort, { once: true })
+    if (signal.aborted) {
+      onAbort()
+    }
+  })
+}
+
+async function retry<T> (
+  retries: number,
+  op: () => Promise<T>,
+  delayMs: number = 100,
+  signal?: AbortSignal
+): Promise<T> {
   let error: any
+  throwIfAborted(signal)
   while (retries > 0) {
     retries--
     try {
       return await op()
     } catch (err: any) {
+      // A cancelled call owns no further attempt, including for writes. The
+      // caller decides how to read back an uncertain write.
+      if (signal?.aborted === true) {
+        throw abortError(signal)
+      }
       error = err
       if (retries !== 0) {
-        await new Promise((resolve) => setTimeout(resolve, delay))
+        await delay(delayMs, signal)
       }
     }
   }
