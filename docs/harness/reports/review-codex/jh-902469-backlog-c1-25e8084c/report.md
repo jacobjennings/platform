@@ -41,6 +41,8 @@ The burst comparison remains preliminary. Its arms lack three interleaved repeti
 
 ## RECOMMENDATIONS
 
-Retain the explicit measurement limits. This run declares no follow-on. Merge status will be recorded after the prescribed script and outcome attempt.
+Retain the explicit measurement limits. This run declares no follow-on. The merge script and outcome command both exited 2 with "harness-reviewmerge: refused before any write: card repo lookup failed:". The required offline board configuration prevents repository lookup. No merge or board write occurred. A fresh fetch followed by the fork ancestry check exited 1. The reviewed tip is absent from origin/jj/activity-feed. Both command captures are beside this report. The script produced no reviewmerge.json or gate-results.jsonl.
+
+The final report prose checker exited 0 and warned "paragraph-length: This paragraph has 94 words. The warning limit is 90." No tests failed because none ran. The operational refusal needs the Director to reconcile the offline board rule with the script's required card lookup. This is an observed tooling block, not a defect in the requested change.
 
 NOT MERGED
