@@ -42,7 +42,7 @@ The context reader returned “selector did not return strict JSON” for the la
 
 The uncommitted local harness.toml supplies only the two Jest runners and gate settings. It is ignored and is not part of the merge. No committed settings file changed.
 
-The prose checker exited 0. Its advisory warnings were “possible-jargon: Explain 'ConnectionInfo'”, “paragraph-length: This paragraph has 115 words. The warning limit is 90.” and “possible-jargon: Explain 'Test Suites'”. The same two possible-jargon warnings also appeared in the paragraph quoting these warnings. These refer to implementation and runner names retained for traceability.
+The prose checker exited 0. Its advisory warnings were “possible-jargon: Explain 'ConnectionInfo'”, “paragraph-length: This paragraph has 115 words. The warning limit is 90.” and “possible-jargon: Explain 'Test Suites'”. The outcome paragraph also produced “possible-jargon: Explain 'JakeHarnessOrchestrator'”. The same two possible-jargon warnings also appeared in the paragraph quoting these warnings. These refer to implementation and runner names retained for traceability.
 
 ## Evidence and identity
 
