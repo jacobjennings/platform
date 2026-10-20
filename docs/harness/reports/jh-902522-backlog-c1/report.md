@@ -211,7 +211,7 @@ the one that moves when the client is remote, which is the situation behind the
 The harness `gate/isolated_run.py` named in the run rules does not exist in this
 repository, so the test files were run directly with the package jest and the
 results are recorded in `docs/reports/jh-902522-backlog-c1/gate-results.jsonl`.
-Each file ran once on tip `75c3a975d`, with `HULY_BOARD_CONFIG` offline and
+Each file ran once on tip `2c20cae52`, with `HULY_BOARD_CONFIG` offline and
 `VIKUNJA_BASE_URL` at `http://127.0.0.1:9`.
 
 | Test file | Result |
