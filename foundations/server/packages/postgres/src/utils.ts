@@ -180,8 +180,9 @@ async function createDomainIndexes (client: postgres.Sql, domains: string[]): Pr
     const indexes = [...getSchemaIndexDefinitions(domain), ...(domainIndexDefinitions[domain] ?? [])]
     for (const index of indexes) {
       const using = index.indexType !== undefined && index.indexType !== 'btree' ? ` USING ${index.indexType}` : ''
+      const storing = index.storing !== undefined ? ` STORING (${index.storing})` : ''
       attempted++
-      await createIndexIfNotExists(client, `${index.name} ON ${domain}${using} (${index.columns})`)
+      await createIndexIfNotExists(client, `${index.name} ON ${domain}${using} (${index.columns})${storing}`)
     }
   }
   return attempted
