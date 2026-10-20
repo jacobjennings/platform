@@ -111,17 +111,19 @@ async function filteredCardsQuery (client, tracker, space) {
 
 // One page at a time from the server snapshot read. The card identities are
 // identical in shape to the complete client read, so the two can be compared.
-async function snapshotRead (kind) {
+async function snapshotRead (kind, facts = true) {
   const { client, tracker, tags, chunter } = await snapshotConnection()
   const project = await client.findOne(tracker.class.Project, { identifier: 'JH' }, { showArchived: true })
   if (!project) throw new Error('Huly project does not exist')
   const cards = kind === 'filtered' ? await filteredCardsQuery(client, tracker, project._id) : { space: project._id }
   const sections = [
     { key: 'cards', _class: tracker.class.Issue, query: cards, limit: 1000 },
-    { key: 'labels', _class: tags.class.TagReference, query: { collection: 'labels' }, limit: 1000 },
-    { key: 'comments', _class: chunter.class.ChatMessage, query: { collection: 'comments' }, limit: 1000 },
-    { key: 'statuses', _class: tracker.class.IssueStatus, query: {}, limit: 500, firstPageOnly: true, scoped: false },
-    { key: 'catalog', _class: tags.class.TagElement, query: { targetClass: tracker.class.Issue }, limit: 1000, firstPageOnly: true, scoped: false }
+    ...(facts
+      ? [{ key: 'labels', _class: tags.class.TagReference, query: { collection: 'labels' }, limit: 1000 },
+          { key: 'comments', _class: chunter.class.ChatMessage, query: { collection: 'comments' }, limit: 1000 },
+          { key: 'statuses', _class: tracker.class.IssueStatus, query: {}, limit: 500, firstPageOnly: true, scoped: false },
+          { key: 'catalog', _class: tags.class.TagElement, query: { targetClass: tracker.class.Issue }, limit: 1000, firstPageOnly: true, scoped: false }]
+      : [])
   ]
   const ids = []
   const counts = {}
@@ -182,6 +184,14 @@ async function run(operation, request) {
       return result
     })
   }
+  if (operation === 'readSnapshotCards') return measure(operation, async () => {
+    const result = await snapshotRead('filtered', false)
+    if (result.failures > 0) throw new Error(`Snapshot reported ${result.failures} failed sections`)
+    if (filteredBaselineIds !== null && JSON.stringify([...result.rows].sort()) !== JSON.stringify(filteredBaselineIds)) {
+      throw new Error('Cards-only snapshot card set differs from the filtered client walk')
+    }
+    return result
+  })
   if (operation === 'readFilteredWalk') return measure(operation, async () => {
     const { client, tracker } = await snapshotConnection()
     const project = await client.findOne(tracker.class.Project, { identifier: 'JH' }, { showArchived: true })

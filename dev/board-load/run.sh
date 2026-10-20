@@ -88,7 +88,7 @@ runner_results="/repo/${run_results#"$repo/"}"
 runner=$(docker create --runtime runc --network "${project}_default" -e CUDA_VISIBLE_DEVICES= -e BOARD_LOAD_RUNNER=1 -e "BOARD_LOAD_STATE=$runner_state" -e "BOARD_LOAD_RESULTS=$runner_results" -v "$repo:/repo" -w /repo --entrypoint /bin/sh hardcoreeng/transactor:v0.7.426 -c 'sleep 14400')
 printf '%s\n' "$runner" >> "$ids"
 docker start "$runner" >/dev/null
-exec_node() { local script=$1; shift; docker exec "$runner" node "/repo/dev/board-load/$script" "$@"; }
+exec_node() { local script=$1; shift; docker exec -e BOARD_LOAD_MOVER -e BOARD_LOAD_ITERATIONS "$runner" node "/repo/dev/board-load/$script" "$@"; }
 exec_node inspect-fixture.cjs > "$run_results/fixture-scale.log" 2>&1
 exec_node seed-accounts.cjs > "$run_results/accounts.log" 2>&1
 exec_node grant-fixture.cjs > "$run_results/grant.log" 2>&1
