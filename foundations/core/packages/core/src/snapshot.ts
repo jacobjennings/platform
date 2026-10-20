@@ -13,10 +13,11 @@
 // limitations under the License.
 //
 
-import { type Class, type Doc, type DocumentQuery, type Ref, type Space, type Timestamp } from './classes'
+import { type Class, type Doc, type Ref, type Space, type Timestamp } from './classes'
+import { type DocumentQuery } from './storage'
 
 /**
- * A snapshot read is a bounded, resumable read of several queries at once.
+ * A snapshot read is a bounded, resumable live read of several queries at once.
  * One request returns one page of every section, so a client that used to
  * page several classes separately pays one round trip per page.
  *
@@ -48,7 +49,8 @@ export interface SnapshotRequest {
   sections: SnapshotSection[]
   // Opaque token from the previous page of the same read.
   cursor?: string
-  // Ask the last page for rows changed since the pinned version.
+  // Ask the last page for change hints since the read began. Required for
+  // reconciling rows that move behind the cursor. Check partial before use.
   includeChanges?: boolean
 }
 
@@ -58,7 +60,8 @@ export interface SnapshotRequest {
 export interface SnapshotSectionPage {
   key: string
   docs: Doc[]
-  // Exact count of matching rows. Present on the first page of a section.
+  // Count at the time the section first runs, when supplied by storage.
+  // Present on the first page only and subject to concurrent writes.
   total?: number
   // True when the section still has rows after this page.
   more: boolean
@@ -89,16 +92,18 @@ export interface SnapshotFailure {
  * @public
  */
 export interface SnapshotPage {
-  // Server time the read is pinned to. Every page of one read has the same value.
+  // Server time the read began. Every page carries this value, but rows are
+  // read live. This is not a database snapshot or a commit-order watermark.
   version: Timestamp
   space: Ref<Space>
   sections: SnapshotSectionPage[]
-  // Rows written after the pinned version, on the last page only.
+  // Change hints observed since version, on the last page only. A partial
+  // response means the set may be incomplete. Rows can change again afterward.
   changes?: SnapshotChange[]
   // Continuation token. Absent on the last page.
   next?: string
   // Sections that failed on this page. Their rows are incomplete.
   failures: SnapshotFailure[]
-  // True when any section failed.
+  // True when a section failed or its bounded result may be incomplete.
   partial: boolean
 }

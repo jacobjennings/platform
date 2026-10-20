@@ -92,11 +92,12 @@ async function main() {
     const children = await group(2, false, false, 0)
     await phase(output)
     let moving = process.env.BOARD_LOAD_MOVER !== '0'
+    let moverError
     const mover = (async () => {
       for (let iteration = 0; moving; iteration++) {
         await command([children[1]], iteration % 2 === 0 ? 'setTaskStage' : 'postTaskComment', { iteration })
       }
-    })().catch(error => { console.error(`mover: ${error.message}`) })
+    })().catch(error => { moverError = error; console.error(`mover: ${error.message}`) })
     for (let iteration = 0; iteration < Number(process.env.BOARD_LOAD_ITERATIONS ?? 3); iteration++) {
       await command([children[0]], 'readProjectTasksIds', { iteration })
       await command([children[0]], 'readSnapshotFull', { iteration })
@@ -108,6 +109,7 @@ async function main() {
     moving = false
     await mover
     await close(children)
+    if (moverError) throw moverError
   } else if (output === 'mixed-health') {
     const children = await group(2, false, true)
     const complete = () => {

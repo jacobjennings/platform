@@ -126,7 +126,7 @@ async function snapshotRead (kind, facts = true) {
           { key: 'catalog', _class: tags.class.TagElement, query: { targetClass: tracker.class.Issue }, limit: 1000, firstPageOnly: true, scoped: false }]
       : [])
   ]
-  const ids = []
+  const ids = new Set()
   const counts = {}
   let cursor
   let pages = 0
@@ -136,13 +136,22 @@ async function snapshotRead (kind, facts = true) {
     const page = await client.findSnapshot({ space: project._id, sections, cursor, includeChanges: true })
     pages++
     for (const section of page.sections) counts[section.key] = (counts[section.key] ?? 0) + section.docs.length
-    for (const doc of page.sections[0].docs) ids.push(doc._id)
+    if (page.partial) throw new Error(`Snapshot is partial: ${JSON.stringify(page.failures)}`)
+    for (const doc of page.sections[0].docs) {
+      if (ids.has(doc._id)) throw new Error('Snapshot returned a duplicate card identity')
+      ids.add(doc._id)
+    }
+    for (const change of page.changes ?? []) {
+      if (change.key !== 'cards') continue
+      if (change.matches && !change.removed) ids.add(change.id)
+      else ids.delete(change.id)
+    }
     changes += page.changes?.length ?? 0
     failures += page.failures.length
     cursor = page.next
     if (cursor === undefined) break
   }
-  return { rows: ids, pages, counts, changes, failures }
+  return { rows: [...ids], pages, counts, changes, failures }
 }
 
 async function run(operation, request) {

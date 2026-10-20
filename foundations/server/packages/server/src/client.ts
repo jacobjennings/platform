@@ -13,6 +13,7 @@
 // limitations under the License.
 //
 
+import { createHash } from 'node:crypto'
 import type { LoginInfoWithWorkspaces } from '@hcengineering/account-client'
 import core, {
   generateId,
@@ -80,12 +81,14 @@ const SNAPSHOT_CHANGES_LIMIT = 2000
 const SNAPSHOT_KEY = /^[a-zA-Z0-9_.-]{1,64}$/
 
 interface SnapshotCursorState {
-  // Pinned server time for every page of the read.
+  // Start time shared by every page of the live read.
   v: Timestamp
   // Space the read is scoped to.
   s: Ref<Space>
   // Section keys the token was issued for, in request order.
   k: string[]
+  // Fingerprint of the normalized sections.
+  q: string
   // Last row identity read per section.
   c: Record<string, Ref<Doc>>
   // Exact row count per section, once known.
@@ -114,13 +117,20 @@ function decodeSnapshotCursor (cursor: string): SnapshotCursorState {
     typeof parsed.s !== 'string' ||
     !Array.isArray(parsed.k) ||
     parsed.k.some((key: unknown) => typeof key !== 'string') ||
+    typeof parsed.q !== 'string' ||
     parsed.c === null ||
     typeof parsed.c !== 'object' ||
+    Array.isArray(parsed.c) ||
+    Object.values(parsed.c).some((value) => typeof value !== 'string') ||
     parsed.t === null ||
-    typeof parsed.t !== 'object'
+    typeof parsed.t !== 'object' ||
+    Array.isArray(parsed.t) ||
+    Object.values(parsed.t).some((value) => typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0)
   ) {
     throw new Error('The snapshot continuation token is not valid')
   }
+  parsed.c = Object.assign(Object.create(null), parsed.c)
+  parsed.t = Object.assign(Object.create(null), parsed.t)
   return parsed as SnapshotCursorState
 }
 
@@ -137,8 +147,13 @@ function snapshotSectionQuery (section: SnapshotSection, space: Ref<Space>): Doc
 function withSnapshotCursor (query: DocumentQuery<Doc>, cursor: Ref<Doc>): DocumentQuery<Doc> {
   const existing = query._id
   const idQuery =
-    existing !== null && typeof existing === 'object' && !Array.isArray(existing) ? { ...(existing as object) } : {}
-  return { ...query, _id: { ...idQuery, $gt: cursor } }
+    existing !== null && typeof existing === 'object' && !Array.isArray(existing)
+      ? { ...(existing as object) }
+      : existing === undefined ? {} : { $in: [existing] }
+  const lowerBound = (idQuery as { $gt?: Ref<Doc> }).$gt
+  // The storage adapter supports ordered string identities, while QuerySelector
+  // types comparison operators for numbers only.
+  return { ...query, _id: { ...idQuery, $gt: lowerBound !== undefined && lowerBound > cursor ? lowerBound : cursor } } as unknown as DocumentQuery<Doc>
 }
 
 /**
@@ -331,18 +346,18 @@ export class ClientSession implements Session {
   }
 
   /**
-   * One bounded page of a versioned, multi-section read.
+   * One bounded page of a live multi-section read.
    *
-   * The first page pins a server timestamp as the read version and returns exact
-   * section counts. Every later page continues from an opaque token that carries
-   * that version and one row cursor per section.
+   * The first page records the server start time and section counts. Each
+   * subsequent page reads current data in identity order. The token binds the
+   * section queries and carries their last identities. This is not an atomic
+   * database snapshot. Counts can change while the read is in progress.
    *
-   * Rows are read in `_id` order with a strict `_id > cursor` filter, so a row
-   * that moves during the read is never returned twice. The last page also
-   * returns every row written since the pinned version, with whether it still
-   * matches its section query and whether it was removed. That change set is how
-   * a caller learns about a row that moved behind its cursor and would otherwise
-   * disappear from the read.
+   * With includeChanges, the final page reports current rows and transaction
+   * identities observed since the start time. Clients reconcile these hints by
+   * section and identity, then fetch matching documents they have not received.
+   * Timestamp-based hints are not a commit-order watermark. A bounded change
+   * set that reaches its cap is explicitly partial and requires a fresh read.
    *
    * Every query goes through the same pipeline as `findAll`, so workspace
    * membership and per-space read security apply unchanged. Scoped sections are
@@ -350,7 +365,8 @@ export class ClientSession implements Session {
    * read into another project.
    *
    * A failed section is reported in `failures` and does not advance its cursor,
-   * so the next page retries it. The other sections still return rows.
+   * so a continuation can retry it. Clients must inspect partial and failures
+   * before continuing. The other sections still return rows.
    */
   async findSnapshotRaw (ctx: ClientSessionCtx, request: SnapshotRequest): Promise<SnapshotPage> {
     this.lastRequest = Date.now()
@@ -396,6 +412,9 @@ export class ClientSession implements Session {
           throw new Error(`Snapshot section ${section.key} query cannot use the top level operator ${key}`)
         }
       }
+      if (section.limit !== undefined && (typeof section.limit !== 'number' || !Number.isFinite(section.limit))) {
+        throw new Error(`Snapshot section ${section.key} needs a finite numeric limit`)
+      }
       const limit =
         section.limit === undefined
           ? SNAPSHOT_DEFAULT_LIMIT
@@ -403,13 +422,14 @@ export class ClientSession implements Session {
       return { ...section, limit, query: { ...section.query } }
     })
 
+    const fingerprint = createHash('sha256').update(JSON.stringify(normalized)).digest('hex')
     const token = request.cursor === undefined ? undefined : decodeSnapshotCursor(request.cursor)
     if (token !== undefined) {
-      if (token.s !== space || token.k.length !== keys.length || token.k.some((key, index) => key !== keys[index])) {
+      if (token.q !== fingerprint || token.s !== space || token.k.length !== keys.length || token.k.some((key, index) => key !== keys[index])) {
         throw new Error('The snapshot continuation token belongs to another read')
       }
     }
-    const state: SnapshotCursorState = token ?? { v: Date.now(), s: space, k: keys, c: {}, t: {} }
+    const state: SnapshotCursorState = token ?? { v: Date.now(), s: space, k: keys, q: fingerprint, c: Object.create(null), t: Object.create(null) }
 
     // The pipeline applies the workspace and space read rules. A space the
     // account cannot read is therefore not found here either.
@@ -425,8 +445,9 @@ export class ClientSession implements Session {
 
     const failures: SnapshotFailure[] = []
     const pages: SnapshotSectionPage[] = []
+    let retryFailedRead = false
     for (const [index, section] of normalized.entries()) {
-      if (section.firstPageOnly === true && token !== undefined) {
+      if (section.firstPageOnly === true && state.t[section.key] !== undefined) {
         pages.push({ key: section.key, docs: [], more: false })
         continue
       }
@@ -447,19 +468,23 @@ export class ClientSession implements Session {
         if (docs.length > 0) {
           state.c[section.key] = docs[docs.length - 1]._id
         }
+        if (section.firstPageOnly === true && docs.length === section.limit) {
+          failures.push({ key: section.key, message: 'The first-page-only section reached its row limit and may be incomplete' })
+        }
         pages.push({
           key: section.key,
           docs,
           ...(first ? { total: state.t[section.key] } : {}),
-          more: docs.length === section.limit
+          more: section.firstPageOnly !== true && docs.length === section.limit
         })
       } catch (err: any) {
+        retryFailedRead = true
         failures.push({ key: section.key, message: String(err?.message ?? err) })
         pages.push({ key: section.key, docs: [], more: false })
       }
     }
 
-    const anyMore = pages.some((page) => page.more)
+    const anyMore = pages.some((page) => page.more) || retryFailedRead
     let changes: SnapshotChange[] | undefined
     if (request.includeChanges === true && !anyMore) {
       changes = []
@@ -470,9 +495,12 @@ export class ClientSession implements Session {
           const modified = await ctx.pipeline.findAll(
             ctx.ctx,
             section._class,
-            { ...base, modifiedOn: { $gte: state.v } },
+            { ...(section.scoped === false ? {} : { space }), modifiedOn: { $gte: state.v } },
             { limit: SNAPSHOT_CHANGES_LIMIT, sort: { _id: 1 }, showArchived: true }
           )
+          if (modified.length === SNAPSHOT_CHANGES_LIMIT) {
+            failures.push({ key: section.key, message: 'The snapshot change set reached its row limit and may be incomplete' })
+          }
           for (const doc of modified) {
             changes.push({
               key: section.key,
@@ -481,19 +509,44 @@ export class ClientSession implements Session {
               removed: false
             })
           }
-          const removed = await ctx.pipeline.findAll(
+          // A row can leave the section filter or move to another space. Read
+          // transaction identities in the original space as well as current rows.
+          const transactions = await ctx.pipeline.findAll(
             ctx.ctx,
-            core.class.Tx,
+            core.class.TxCUD,
             {
-              _class: core.class.TxRemoveDoc,
-              createdOn: { $gte: state.v },
-              objectClass: section._class,
-              ...(section.scoped === false ? {} : { space })
+              _class: { $in: [core.class.TxCreateDoc, core.class.TxUpdateDoc, core.class.TxMixin, core.class.TxRemoveDoc] },
+              modifiedOn: { $gte: state.v },
+              objectClass: { $in: hierarchy.getDescendants(section._class) },
+              ...(section.scoped === false ? {} : { objectSpace: space })
             },
             { limit: SNAPSHOT_CHANGES_LIMIT, sort: { _id: 1 }, showArchived: true }
           )
-          for (const tx of removed as any[]) {
-            changes.push({ key: section.key, id: tx.objectId, matches: false, removed: true })
+          if (transactions.length === SNAPSHOT_CHANGES_LIMIT) {
+            failures.push({ key: section.key, message: 'The snapshot transaction set reached its row limit and may be incomplete' })
+          }
+          const ids = [...new Set(transactions.map((tx) => tx.objectId))]
+          if (ids.length > 0) {
+            // Recheck through the read pipeline. A move to an inaccessible space
+            // must not return the destination document.
+            const current = await ctx.pipeline.findAll(
+              ctx.ctx,
+              section._class,
+              { ...(section.scoped === false ? {} : { space }), _id: { $in: ids } },
+              { limit: SNAPSHOT_CHANGES_LIMIT, showArchived: true }
+            )
+            const byId = new Map(current.map((doc) => [doc._id, doc]))
+            const removed = new Set(transactions
+              .filter((tx) => tx._class === core.class.TxRemoveDoc).map((tx) => tx.objectId))
+            for (const id of ids) {
+              const doc = byId.get(id)
+              changes.push({
+                key: section.key,
+                id,
+                matches: doc !== undefined && matchQuery([doc], base, section._class, hierarchy).length > 0,
+                removed: doc === undefined && removed.has(id)
+              })
+            }
           }
         } catch (err: any) {
           failures.push({ key: section.key, message: `changes: ${String(err?.message ?? err)}` })
@@ -501,11 +554,23 @@ export class ClientSession implements Session {
       }
     }
 
+    const uniqueChanges = changes === undefined
+      ? undefined
+      : [...new Map(changes.map((change) => [JSON.stringify([change.key, change.id]), change])).values()]
+    const changeCounts = new Map<string, number>()
+    const boundedChanges = uniqueChanges?.filter((change) => {
+      const count = (changeCounts.get(change.key) ?? 0) + 1
+      changeCounts.set(change.key, count)
+      if (count === SNAPSHOT_CHANGES_LIMIT + 1) {
+        failures.push({ key: change.key, message: 'The combined snapshot change set exceeded its row limit and is incomplete' })
+      }
+      return count <= SNAPSHOT_CHANGES_LIMIT
+    })
     return {
       version: state.v,
       space,
       sections: pages,
-      ...(changes !== undefined ? { changes } : {}),
+      ...(boundedChanges !== undefined ? { changes: boundedChanges } : {}),
       ...(anyMore ? { next: encodeSnapshotCursor(state) } : {}),
       failures,
       partial: failures.length > 0

@@ -1,14 +1,12 @@
-# JH-902522 report
+# Server snapshot evidence
 
-The full report is at
-`docs/harness/reports/jh-902522-backlog-c1/report.md`, which is where the other
-harness reports live. This file exists because the run brief also names this
-path.
+Source task: [JH-902522](http://huly.lan/workbench/hulyaccessevaluation/tracker/JH-902522).
 
-Summary: the server gains `findSnapshot`, a versioned, bounded, resumable read
-of several board queries. On the local stack with the restored JH snapshot the
-expensive full board read drops from 194 round trips to 7 (27.7x) and the
-filtered cards read from 79 to 3 (26x). Wall clock improves 1.75x for the full
-read and 7.2x for cards only, so no tenfold latency claim is made.
+The implementation report and its review correction are at
+`docs/harness/reports/jh-902522-backlog-c1/report.md`.
 
-Test results: `docs/reports/jh-902522-backlog-c1/gate-results.jsonl`.
+The endpoint is a bounded live continuation read. Its start timestamp does not
+pin database contents. Historical performance numbers predate the reviewer
+fixes. They do not establish current performance or wire payload bytes.
+
+Worker results are in `docs/reports/jh-902522-backlog-c1/gate-results.jsonl`.

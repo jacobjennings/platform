@@ -1,3 +1,37 @@
+# Server snapshot implementation evidence
+
+## Review correction
+
+Source task: [JH-902522](http://huly.lan/workbench/hulyaccessevaluation/tracker/JH-902522).
+
+The original implementation report below records historical worker observations.
+Its snapshot consistency and completeness claims are superseded by this correction.
+The API performs a live continuation read. Its version is the server start time,
+not a fixed database version or a commit-order watermark. Per-section totals
+are observations made at different times. Clients must request change hints,
+reconcile identities and reject partial results when they require completeness.
+
+The reviewer corrected identity-filter continuation, finite page limits, query
+binding, failed-section retries, change-set truncation and transaction lookup.
+Change hints now recheck identities from transactions in the original space.
+This covers rows that leave a status filter or move out of the project. Queries
+still use the existing permission pipeline. No atomic membership snapshot is
+promised. The benchmark now applies the change hints and fails on partial data,
+duplicate identities or mover errors.
+
+The historical measurements do not validate the corrected implementation.
+The columns called payload bytes below measure the JSON of the benchmark result,
+which mainly contains identities. They do not measure the RPC response payload.
+The historical round-trip counts compare page size 50 with page size 1000 as
+well as comparing algorithms. They do not isolate the endpoint's improvement
+at equal page size. No current tenfold target is accepted by this review.
+Membership changes were not measured. Concurrent filtered equality was not
+asserted by the original benchmark. No new measurement was run in review.
+
+The final review report records the checks of the corrected implementation.
+
+## Historical worker report
+
 # JH-902522: a versioned snapshot read on the Huly server
 
 Run: `jh-902522-backlog-c1`, branch `codex/jh-902522-backlog-c1`.
