@@ -3,7 +3,7 @@
 Card: http://huly.lan/workbench/hulyaccessevaluation/tracker/JH-902460
 Run: `jh-902460-backlog-c1`
 Run branch: `codex/jh-902460-backlog-c1`
-Tip tested: `38c4ec81912f2dfd6556483df995b7ce6227e51b`
+Tip tested: `aa60142a4ae445b76fbd9cdce3a557273681320a`
 Parent branch: `jj/activity-feed`, tip `7a6e1daee2992391fe920fe382c5c119ac8f2bbf`
 Worktree: `/home/jakej/gh/huly-platform-worktrees/jh-902460-backlog-c1`
 
@@ -91,13 +91,13 @@ constructs `ConnectionMgr` and exercises the adapter, so it was run as well.
 
 Gate table, from
 `docs/harness/reports/jh-902460-backlog-c1/gate-results.jsonl` on commit
-`38c4ec81912f2dfd6556483df995b7ce6227e51b`:
+`aa60142a4ae445b76fbd9cdce3a557273681320a`:
 
 ```
 | File | Tree | rc | Ran | Failures | Errors | Skipped | Excluded | Seconds | Jobs | Batch seconds |
 |---|---|---|---|---|---|---|---|---|---|---|
-| foundations/core/packages/postgres-base/src/__tests__/connection.test.ts | 524c0cb4 | 0 | None | None | None | None | None | 1 | 1 | 1 |
-| foundations/server/packages/postgres/src/__tests__/conversion.spec.ts | 524c0cb4 | 0 | None | None | None | None | None | 1 | 1 | 1 |
+| foundations/core/packages/postgres-base/src/__tests__/connection.test.ts | 3ff8b87f | 0 | None | None | None | None | None | 1 | 1 | 1 |
+| foundations/server/packages/postgres/src/__tests__/conversion.spec.ts | 3ff8b87f | 0 | None | None | None | None | None | 0 | 1 | 1 |
 
 2 runs, 2 rc 0, 0 not rc 0
 ```
@@ -124,12 +124,16 @@ The cache directory is now inside the package's ignored `.build` folder. One
 conversion attempt failed to resolve `@hcengineering/core` before workspace
 dependencies were built. After
 `node common/scripts/install-run-rush.js build --to @hcengineering/postgres`
-succeeded, the same file passed on the same commit.
+succeeded, the file passed. The last code commit `aa60142a4` only names the
+promise constructor parameters that the linter requires, and both files were
+run again on that tip. Those two runs are the records kept above.
 
 Other checks on the tip:
 
 - `rush build --to @hcengineering/postgres`: success, 11 operations.
 - `compile` in `foundations/core/packages/postgres-base`: rc 0.
+- `eslint src/index.ts src/__tests__/connection.test.ts` in that package:
+  rc 0.
 - `python3 launch/no-project-names-test.py`: not present in this repository,
   so it could not run. The same is true of
   `python3 checks/configured-values-test.py`. Both paths exist in the
