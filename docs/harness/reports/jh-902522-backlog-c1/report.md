@@ -1,8 +1,9 @@
 # JH-902522: a versioned snapshot read on the Huly server
 
 Run: `jh-902522-backlog-c1`, branch `codex/jh-902522-backlog-c1`.
-Fork half of JH-902493. Base `jj/activity-feed` at `c45f7774b` (already an
-ancestor of this branch, so no merge was needed).
+Fork half of JH-902493. Base `jj/activity-feed` at `c45f7774b`. `git merge-base
+--is-ancestor origin/jj/activity-feed HEAD` passed, so the base is merged and no
+merge commit was needed.
 
 ## What this adds
 
@@ -61,6 +62,14 @@ reads the failed section again on its own. `partial` is true when any section
 failed. Every page is bounded, so a large board is a sequence of pages rather
 than one unbounded response.
 
+**Description revisions.** A card document carries its `description` revision
+reference, and the snapshot returns the card unchanged, so the reference is in
+the read. The text of a revision lives in the collaborator's document store,
+not in the transactor, so the snapshot does not inline it. The caller fetches
+text in batches through the collaborator's existing bulk `getContents` path,
+which keeps document access on the service that owns it. Comments are returned
+as their own section from the transactor.
+
 ## Files changed
 
 - `foundations/core/packages/core/src/snapshot.ts` (new): request, page, change and failure types.
@@ -88,9 +97,18 @@ concurrent run; the quiet run below is the one used for CPU.
 Commands (both pushed commits):
 
 ```sh
-BOARD_LOAD_NODE=<node 22> BOARD_LOAD_SCENARIOS=snapshot bash dev/board-load/run.sh
-BOARD_LOAD_NODE=<node 22> BOARD_LOAD_SCENARIOS=snapshot BOARD_LOAD_MOVER=0 BOARD_LOAD_ITERATIONS=3 bash dev/board-load/run.sh
+BOARD_LOAD_NODE=$HOME/.local/opt/node-v22.23.3-linux-x64/bin/node \
+  BOARD_LOAD_SCENARIOS=snapshot bash dev/board-load/run.sh
+BOARD_LOAD_NODE=$HOME/.local/opt/node-v22.23.3-linux-x64/bin/node \
+  BOARD_LOAD_SCENARIOS=snapshot BOARD_LOAD_MOVER=0 BOARD_LOAD_ITERATIONS=3 \
+  bash dev/board-load/run.sh
 ```
+
+The rig creates a fresh CockroachDB stack, restores the snapshot, builds
+`pod-server`, `pod-account`, `pod-collaborator` and `api-client` from the
+checkout, seeds local accounts, and stops only the containers it recorded. The
+run's `snapshot.jsonl`, `event-loop.jsonl` and percentile table are local,
+ignored artifacts.
 
 "Client walk" is the existing harness read: `_id` cursor walk with exact totals,
 a catch-up walk for rows written since the read began, and a batched id recheck.
@@ -215,3 +233,9 @@ a failed section.
 5. **Add a server unit test for `findSnapshotRaw`** covering scope rejection, the
    cursor, the change set and a failed section. The card did not ask for one and
    the run rules forbid new tests, so none was added.
+
+## Report paths
+
+This file is the full report and lives where the other harness reports live. The
+run brief also names `docs/reports/jh-902522-backlog-c1/report.md`, which holds a
+short pointer to this file. Both are committed on the run branch.
