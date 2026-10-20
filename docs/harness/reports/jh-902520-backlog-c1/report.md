@@ -5,6 +5,15 @@ Card: http://huly.lan/workbench/hulyaccessevaluation/tracker/JH-902520
 This report is mirrored at `docs/harness/reports/jh-902520-backlog-c1/report.md`
 because the run brief names both locations.
 
+## Review qualification
+
+The rig table below records one run per arm. It does not establish a repeatable
+performance improvement. There are no interleaved repetitions, three-run medians
+or machine-load records here. The ratios describe this pair only. Raw rig logs
+and raw test runner logs were not committed with this report. The reviewer could
+check the policy and test assertions, but could not verify the recorded run
+results independently.
+
 ## Result
 
 Complete. `foundations/core/packages/client-resources/src/connection.ts` now
@@ -14,15 +23,16 @@ budget left raises it by 10 ms. A recovered budget no longer carries a penalty
 for the lifetime of the connection.
 
 The old counter had two defects. It grew without a bound inside the pressure
-branch. The only decrement sat behind `remaining < 50`, which the normal 1,500
-request limit never reaches, so a single rejection left a growing delay on every
+branch. The only decrement sat behind `remaining < 50`, which healthy responses with most of the normal 1,500
+request budget remaining cannot enter, so a single rejection left a growing delay on every
 later request of that connection.
 
 The committed mixed migration workload was rerun twice on the load rig against
 the same snapshot and the same corrected server limiter. Only the client pacing
-file differed. The bounded version finished the 1,000 card migration 2.36 times
-faster, scheduled 3.28 times less client pacing and had no rate-limit rejection
-instead of one. Focused pacing tests cover the rule and one persistent
+file differed. In this single recorded pair, the bounded version took 42.3% of the base
+elapsed time and scheduled 30.5% of the base pacing. It had no recorded
+rate-limit rejection instead of one. These figures are unverified run records,
+not a repeated performance result. Focused pacing tests cover the rule and one persistent
 connection through a healthy phase, a nearly spent budget, a rejection with a
 server retry, and recovery.
 
@@ -100,8 +110,8 @@ scheduled pacing, maximum pacing, RPC sends and rate-limit responses.
 | ping p50 | 2.6 ms | 2.7 ms |
 | Errors | 0 | 0 |
 
-The migration sent the same work both times. The tip finished it 2.36 times
-faster and scheduled 3.28 times less pacing. The old run hit one rejection and
+The migration sent the same work both times. The recorded tip elapsed time was 42.3% of the base time, and scheduled pacing
+was 30.5% of the base value in this pair. The old run hit one rejection and
 then carried its penalty. The new run stayed under the limit, so no rejection
 occurred.
 
@@ -115,14 +125,14 @@ Per operation on this tip:
 | mixed migration | 1 | 164,840 ms | 2,907 | 100 ms | 0 |
 
 The ping lane had no scheduled pacing at all after the migration, and its calls
-returned in 2 to 4 ms. The launcher lane shows the decay directly. Its 16:49:29
+returned in 2 to 4 ms. The launcher lane shows the decay directly. Its 11:49:29 am America/Chicago
 read, after the migration pressure ended, scheduled 0 ms over 0 paced requests
 and returned in 6,395 ms, while that same connection had reached the 100 ms cap
 earlier.
 
-The remaining scheduled pacing in the mixed run is live congestion control while
-five clients share one account. It is not the stuck penalty that the before
-evidence recorded. In the base run the connection reached 81 ms and kept it,
+The changed policy increases pacing while the budget is low and reduces it
+when responses show a recovered budget. The table alone cannot attribute the
+elapsed-time difference to pacing. In the base run the connection reached 81 ms and kept it,
 which is why 6,683 requests carried a penalty. The old JH-902455 mixed run at
 `8deb9d1` recorded the same failure more strongly: one rejection, 505,965 ms of
 scheduled pacing, a retained delay of 76 ms and a 645,392 ms migration. That
