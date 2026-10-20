@@ -104,6 +104,7 @@ async function main() {
       await command([children[0]], 'readSnapshotFiltered', { iteration })
       await command([children[0]], 'readSnapshotCards', { iteration })
     }
+    await command([children[0]], 'snapshotGuards', {})
     moving = false
     await mover
     await close(children)

@@ -418,16 +418,21 @@ export class ClientSession implements Session {
       throw new Error('The snapshot space is not visible to this account')
     }
 
+    // Section scope is a request contract, not a read that can partially fail:
+    // resolve every section query once, before any rows are read, so a request
+    // that points a scoped section at another space is refused as a whole.
+    const scopedQueries = normalized.map((section) => snapshotSectionQuery(section, space))
+
     const failures: SnapshotFailure[] = []
     const pages: SnapshotSectionPage[] = []
-    for (const section of normalized) {
+    for (const [index, section] of normalized.entries()) {
       if (section.firstPageOnly === true && token !== undefined) {
         pages.push({ key: section.key, docs: [], more: false })
         continue
       }
       try {
         const first = state.c[section.key] === undefined
-        const base = snapshotSectionQuery(section, space)
+        const base = scopedQueries[index]
         const query = first ? base : withSnapshotCursor(base, state.c[section.key])
         const options: FindOptions<Doc> = {
           limit: section.limit,
@@ -458,10 +463,10 @@ export class ClientSession implements Session {
     let changes: SnapshotChange[] | undefined
     if (request.includeChanges === true && !anyMore) {
       changes = []
-      for (const section of normalized) {
+      for (const [index, section] of normalized.entries()) {
         if (section.firstPageOnly === true) continue
         try {
-          const base = snapshotSectionQuery(section, space)
+          const base = scopedQueries[index]
           const modified = await ctx.pipeline.findAll(
             ctx.ctx,
             section._class,

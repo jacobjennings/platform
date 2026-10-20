@@ -45,6 +45,7 @@ async function measure(operation, work) {
   if (result?.counts !== undefined) row.counts = result.counts
   if (result?.changes !== undefined) row.changes = result.changes
   if (result?.failures !== undefined) row.failures = result.failures
+  if (result?.guards !== undefined) row.guards = result.guards
   if (process.send) process.send(row)
   else fs.appendFileSync(`${resultsFolder}/smoke.jsonl`, JSON.stringify(row) + '\n')
   if (error) throw new Error(`${operation}: ${error}`)
@@ -191,6 +192,30 @@ async function run(operation, request) {
       throw new Error('Cards-only snapshot card set differs from the filtered client walk')
     }
     return result
+  })
+  if (operation === 'snapshotGuards') return measure(operation, async () => {
+    const { client, tracker } = await snapshotConnection()
+    const jh = await client.findOne(tracker.class.Project, { identifier: 'JH' }, { showArchived: true })
+    const vk8 = await client.findOne(tracker.class.Project, { identifier: 'VK8' }, { showArchived: true })
+    if (!jh || !vk8) throw new Error('The guard check needs both fixture projects')
+    const guards = {}
+    guards.ids = { jh: String(jh._id), vk8: String(vk8._id), vk8Identifier: String(vk8.identifier) }
+    const outcome = async (name, work) => {
+      try { await work(); guards[name] = 'accepted' } catch (error) { guards[name] = String(error.message).split('\n')[0].slice(0, 160) }
+    }
+    const cardSection = key => ({ key, _class: tracker.class.Issue, query: {}, limit: 10 })
+    // A scoped section cannot be pointed at another project.
+    await outcome('foreignSpace', () => client.findSnapshot({ space: jh._id, sections: [{ ...cardSection('cards'), query: { space: '111111111111111111111111' } }] }))
+    // An unknown space is not visible.
+    await outcome('unknownSpace', () => client.findSnapshot({ space: '000000000000000000000000', sections: [cardSection('cards')] }))
+    // A token belongs to the read that issued it.
+    const first = await client.findSnapshot({ space: jh._id, sections: [cardSection('cards')] })
+    if (first.next === undefined) throw new Error('The guard read expected a continuation token')
+    await outcome('tokenMismatch', () => client.findSnapshot({ space: jh._id, sections: [cardSection('other')], cursor: first.next }))
+    // Duplicate keys and top level operators are refused.
+    await outcome('duplicateKey', () => client.findSnapshot({ space: jh._id, sections: [cardSection('cards'), cardSection('cards')] }))
+    await outcome('queryOperator', () => client.findSnapshot({ space: jh._id, sections: [{ ...cardSection('cards'), query: { $where: '1' } }] }))
+    return { guards, rows: [] }
   })
   if (operation === 'readFilteredWalk') return measure(operation, async () => {
     const { client, tracker } = await snapshotConnection()
