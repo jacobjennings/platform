@@ -1,0 +1,77 @@
+The rush.json configuration requests Rush version 5.158.1
+
+Invoking "rush build --to @hcengineering/postgres"
+--------------------------------------------------
+
+Found configuration in /home/jakej/gh/huly-platform-worktrees/review-codex-jh-902563-backlog-c1-2a9a8109/rush.json
+
+
+[1mRush Multi-Project Build Tool 5.158.1[33m[39m[22m[36m - https://rushjs.io[39m
+Node.js version is 22.23.3 (LTS)
+
+
+Starting "rush build"
+Analyzing repo state... DONE (0.10 seconds)
+
+Executing a maximum of 48 simultaneous processes...
+
+==[ @hcengineering/platform-rig (build) ]=========================[ 1 of 12 ]==
+"@hcengineering/platform-rig (build)" did not define any work.
+
+==[ @hcengineering/measurements (build) ]=========================[ 2 of 12 ]==
+"@hcengineering/measurements (build)" completed successfully in 0.21 seconds.
+
+==[ @hcengineering/postgres-base (build) ]========================[ 3 of 12 ]==
+"@hcengineering/postgres-base (build)" completed successfully in 0.20 seconds.
+
+==[ @hcengineering/platform (build) ]=============================[ 4 of 12 ]==
+"@hcengineering/platform (build)" completed successfully in 0.21 seconds.
+
+==[ @hcengineering/analytics (build) ]============================[ 5 of 12 ]==
+"@hcengineering/analytics (build)" completed successfully in 0.18 seconds.
+
+==[ @hcengineering/core (build) ]=================================[ 6 of 12 ]==
+"@hcengineering/core (build)" completed successfully in 0.20 seconds.
+
+==[ @hcengineering/query (build) ]================================[ 7 of 12 ]==
+"@hcengineering/query (build)" completed successfully in 0.19 seconds.
+
+==[ @hcengineering/storage (build) ]==============================[ 8 of 12 ]==
+"@hcengineering/storage (build)" completed successfully in 0.18 seconds.
+
+==[ @hcengineering/server-token (build) ]=========================[ 9 of 12 ]==
+"@hcengineering/server-token (build)" completed successfully in 0.19 seconds.
+
+==[ @hcengineering/rpc (build) ]=================================[ 10 of 12 ]==
+"@hcengineering/rpc (build)" completed successfully in 0.19 seconds.
+
+==[ @hcengineering/server-core (build) ]=========================[ 11 of 12 ]==
+"@hcengineering/server-core (build)" completed successfully in 0.20 seconds.
+
+==[ @hcengineering/postgres (build) ]============================[ 12 of 12 ]==
+"@hcengineering/postgres (build)" completed successfully in 0.19 seconds.
+
+
+
+==[ NO OP: 1 operation ]=======================================================
+
+These operations did not define any work:
+  @hcengineering/platform-rig (build)
+
+==[ SUCCESS: 11 operations ]===================================================
+
+These operations completed successfully:
+  @hcengineering/analytics (build)        0.18 seconds
+  @hcengineering/core (build)             0.20 seconds
+  @hcengineering/measurements (build)     0.21 seconds
+  @hcengineering/platform (build)         0.21 seconds
+  @hcengineering/postgres (build)         0.19 seconds
+  @hcengineering/postgres-base (build)    0.20 seconds
+  @hcengineering/query (build)            0.19 seconds
+  @hcengineering/rpc (build)              0.19 seconds
+  @hcengineering/server-core (build)      0.20 seconds
+  @hcengineering/server-token (build)     0.19 seconds
+  @hcengineering/storage (build)          0.18 seconds
+
+
+rush build (1.40 seconds)

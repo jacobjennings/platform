@@ -1,0 +1,14 @@
+
+=============================== Coverage summary ===============================
+Statements   : 59.33% ( 197/332 )
+Branches     : 59.73% ( 89/149 )
+Functions    : 41.81% ( 23/55 )
+Lines        : 59.49% ( 188/316 )
+================================================================================
+PASS src/__tests__/utils.spec.ts
+
+Test Suites: 1 passed, 1 total
+Tests:       82 passed, 82 total
+Snapshots:   0 total
+Time:        0.763 s
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?

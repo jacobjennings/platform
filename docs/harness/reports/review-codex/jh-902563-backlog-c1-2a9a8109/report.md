@@ -43,7 +43,7 @@ Tested tree: 4428b3f6005ebaf0064ec68d2d80d5d3e2652264.
 | `foundations/server/packages/postgres/src/__tests__/conversion.spec.ts` | `Tests: 18 passed, 18 total`. One suite passed. | 0 |
 | `node common/scripts/install-run-rush.js build --to @hcengineering/postgres` | 11 build operations succeeded. The compiled utils.js emits `INCLUDE`. | 0 |
 
-Both Jest commands used Node 22, `--runInBand --silent --forceExit` and their single file path. They ran through `gate/isolated_run.py --done` with `reviewer-change:portable-covering-index-syntax`. The runner provided fresh HOME, TMPDIR and XDG directories, guarded Git and refused board URLs. Raw records are in `reviewer-checks.jsonl`. Full check logs are copied into `validation/`. The records mark the tree dirty because this report was being edited. The implementation matched the tested commit. These records are not claimed as reusable merge-gate rows.
+The two Jest commands used Node 22, `--runInBand --silent --forceExit` and their single file path. They ran through `gate/isolated_run.py --done` with `reviewer-change:portable-covering-index-syntax`. The runner provided fresh HOME, TMPDIR and XDG directories, guarded Git and refused board URLs. Raw records are in `reviewer-checks.jsonl`. Full check logs are copied into `validation/`. The records mark the tree dirty because this report was being edited. The implementation matched the tested commit. These records are not claimed as reusable merge-gate rows.
 
 The first install attempt exited 1 after I stopped its own waiting Electron installer child, PID 1681. Its error was `Process terminated by SIGTERM`. Retrying the configured Rush install with `ELECTRON_SKIP_BINARY_DOWNLOAD=1 PUPPETEER_SKIP_DOWNLOAD=1` exited 0 and printed `Rush install finished successfully.` No browser was launched, so no browser process needed cleanup.
 
@@ -67,7 +67,7 @@ The saved full comments walk is slower after the index. A full board timing and 
 
 ## Merge record
 
-The provisional report was committed as `6c4bc1816` and pushed before any test ran. The final report will be pushed before the merge. The ReviewMerge script alone will perform the merge and push. No settings or frozen files were changed.
+The provisional report was committed as `6c4bc1816` and pushed before any test ran. The final report was pushed before the merge. The ReviewMerge script alone will perform the merge and push. No settings or frozen files were changed.
 
 ## Failing after merge
 
