@@ -1333,6 +1333,7 @@ export class TSessionManager implements SessionManager {
 
   async closeWorkspaces (ctx: MeasureContext): Promise<void> {
     clearInterval(this.checkInterval)
+    this.eventLoopMonitor.disable()
     for (const w of this.workspaces) {
       await this.doCloseAll(w[1], 1, 'shutdown')
     }
@@ -1508,11 +1509,14 @@ export class TSessionManager implements SessionManager {
     source: 'websocket' | 'rpc',
     startedAt: number,
     execStart: number,
-    finishedAt: number
+    finishedAt: number,
+    completed: boolean = true
   ): void {
     const totalMs = finishedAt - startedAt
     const key = this.rateLimitKey(service)
     this.minuteRequestStats.request(key, service.getUser(), this.serviceName(service), totalMs)
+    const findQuery = (service as any).requestQuery?.get(requestId)
+    ;(service as any).requestQuery?.delete(requestId)
     const resultCount = (service as any).requestResultCount?.get(requestId)
     ;(service as any).requestResultCount?.delete(requestId)
     if (totalMs >= this.slowRequestMs) {
@@ -1520,8 +1524,8 @@ export class TSessionManager implements SessionManager {
       this.ctx.warn('slow request', {
         method,
         source,
-        class: isFind ? params[0] : undefined,
-        queryKeys: isFind ? queryKeys(params[1]) : undefined,
+        class: isFind ? findQuery?.class ?? params[0] : undefined,
+        queryKeys: isFind ? findQuery?.queryKeys ?? queryKeys(params[1]) : undefined,
         resultCount,
         user: service.getUser(),
         service: this.serviceName(service),
@@ -1531,7 +1535,7 @@ export class TSessionManager implements SessionManager {
         totalMs
       })
     }
-    if (method === 'findAll' || method === 'loadModel') {
+    if (completed && (method === 'findAll' || method === 'loadModel')) {
       const connectMs = this.connectTimings.complete(service.sessionId, finishedAt)
       if (connectMs !== undefined && connectMs >= this.slowConnectMs) {
         this.ctx.warn('slow connect', {
@@ -1566,6 +1570,7 @@ export class TSessionManager implements SessionManager {
     const st = Date.now()
     let execStart = st
     let timedRequest = false
+    let completed = false
     try {
       if (request.time != null) {
         const delta = Date.now() - request.time
@@ -1651,10 +1656,10 @@ export class TSessionManager implements SessionManager {
           ws.sendPong()
           return
         }
-        execStart = Date.now()
         timedRequest = true
         await this.counters.withCounter('request', 1, () =>
           workspace.with(async (pipeline) => {
+            execStart = Date.now()
             await requestCtx.with(
               '🧨' + request.method,
               { source, mode: 'websocket' },
@@ -1672,6 +1677,7 @@ export class TSessionManager implements SessionManager {
             )
           })
         )
+        completed = true
       } catch (err: any) {
         Analytics.handleError(err)
         if (LOGGING_ENABLED) {
@@ -1699,7 +1705,8 @@ export class TSessionManager implements SessionManager {
           'websocket',
           st,
           execStart,
-          Date.now()
+          Date.now(),
+          completed
         )
       }
     }
@@ -1727,6 +1734,7 @@ export class TSessionManager implements SessionManager {
     const st = Date.now()
     let execStart = st
     let timedRequest = false
+    let completed = false
     try {
       const workspace = this.workspaces.get(service.workspace.uuid)
       if (workspace === undefined || workspace.closing !== undefined) {
@@ -1740,10 +1748,10 @@ export class TSessionManager implements SessionManager {
       })
 
       try {
-        execStart = Date.now()
         timedRequest = true
         await this.counters.withCounter('request', 1, () =>
           workspace.with(async (pipeline) => {
+            execStart = Date.now()
             await requestCtx.with(
               '🧨 ' + method,
               { source, mode: 'rpc' },
@@ -1760,6 +1768,7 @@ export class TSessionManager implements SessionManager {
             )
           })
         )
+        completed = true
       } catch (err: any) {
         Analytics.handleError(err)
         if (LOGGING_ENABLED) {
@@ -1781,7 +1790,7 @@ export class TSessionManager implements SessionManager {
     } finally {
       service.requests.delete(reqId)
       if (timedRequest) {
-        this.logSlowRequest(service, method, [], reqId, 'rpc', st, execStart, Date.now())
+        this.logSlowRequest(service, method, [], reqId, 'rpc', st, execStart, Date.now(), completed)
       }
     }
   }

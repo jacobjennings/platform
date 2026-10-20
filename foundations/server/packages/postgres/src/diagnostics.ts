@@ -29,12 +29,15 @@ export function slowSqlThreshold (): number {
 }
 
 /**
- * The statements this adapter sends already use $n placeholders, so the text
- * carries no parameter values. Collapse whitespace and bound the length so a
- * large bulk insert still produces one readable line.
+ * Remove inline SQL literals and comments as well as keeping bound parameters
+ * out of the log. Preserve quoted identifiers and $n placeholders.
  */
 export function normalizeSql (sql: string): string {
-  const normalized = sql.replace(/\s+/g, ' ').trim()
+  const redacted = sql.replace(
+    /--[^\n]*|\/\*[\s\S]*?\*\/|\$(?:([A-Za-z_][A-Za-z_0-9]*)?)\$[\s\S]*?\$\1\$|(?:[eEbBxX])?'(?:''|\\[\s\S]|[^'])*'|"(?:""|[^"])*"|\$\d+|\b\d+(?:\.\d+)?(?:[eE][+-]?\d+)?\b/g,
+    (token) => token.startsWith('"') || /^\$\d+$/.test(token) ? token : '?'
+  )
+  const normalized = redacted.replace(/\s+/g, ' ').trim()
   return normalized.length > MAX_STATEMENT_LENGTH ? normalized.slice(0, MAX_STATEMENT_LENGTH) + '...' : normalized
 }
 
@@ -68,16 +71,20 @@ export function wrapSlowSqlClient (
   return {
     execute: async (query, parameters) => {
       const start = now()
-      const result = await client.execute(query, parameters)
-      const durationMs = now() - start
-      if (durationMs >= thresholdMs) {
-        log.info('slow sql', {
-          statement: normalizeSql(String(query)),
-          durationMs,
-          rows: rowCount(result)
-        })
+      let result: any
+      try {
+        result = await client.execute(query, parameters)
+        return result
+      } finally {
+        const durationMs = now() - start
+        if (durationMs >= thresholdMs) {
+          log.info('slow sql', {
+            statement: normalizeSql(String(query)),
+            durationMs,
+            rows: rowCount(result)
+          })
+        }
       }
-      return result
     },
     release: () => client.release(),
     reserve: async () => wrapSlowSqlClient(await client.reserve(), log, thresholdMs, now),
@@ -115,5 +122,43 @@ export function createSlowSql (ctx: MeasureContext, thresholdMs: number = slowSq
   return {
     wrapClient: (client: DBClient) => wrapSlowSqlClient(client, ctx, thresholdMs),
     wrapMgr: (mgr: ConnectionMgr) => wrapSlowSqlMgr(mgr, ctx, thresholdMs)
+  }
+}
+
+/** Measure database waits for a cursor, excluding time spent consuming its rows. */
+export async function * timedSqlCursor<T extends any[]> (
+  cursor: AsyncIterable<T>,
+  statement: string,
+  log: SlowSqlLogger,
+  thresholdMs: number = slowSqlThreshold()
+): AsyncGenerator<T> {
+  const iterator = cursor[Symbol.asyncIterator]()
+  let durationMs = 0
+  let rows = 0
+  let done = false
+  try {
+    while (true) {
+      const start = Date.now()
+      let part: IteratorResult<T>
+      try {
+        part = await iterator.next()
+      } finally {
+        durationMs += Date.now() - start
+      }
+      if (part.done === true) {
+        done = true
+        break
+      }
+      rows += part.value.length
+      yield part.value
+    }
+  } finally {
+    try {
+      if (!done) await iterator.return?.()
+    } finally {
+      if (durationMs >= thresholdMs) {
+        log.info('slow sql', { statement: normalizeSql(statement), durationMs, rows })
+      }
+    }
   }
 }

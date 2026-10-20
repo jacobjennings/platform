@@ -287,6 +287,7 @@ class Connection implements ClientConnection {
   currentRateLimit: RateLimitInfo | undefined
   slowDownTimer = 0
   // Diagnostics only: one warning per rate-limit wait burst.
+  private rateLimitWaiting = 0
   private readonly rateLimitWaits = new RateLimitWaitLogger((message, obj) => this.ctx.warn(message, obj))
 
   handleMsg (socketId: number, resp: Response<any>): void {
@@ -327,8 +328,9 @@ class Connection implements ClientConnection {
           const { remaining, retryAfter } = resp.rateLimit
           if (remaining === 0) {
             const retryAfterMs = retryAfter ?? 1
-            this.rateLimitWaits.wait(retryAfterMs, this.requests.size)
+            this.rateLimitWaits.wait(retryAfterMs, ++this.rateLimitWaiting)
             void new Promise((resolve) => setTimeout(resolve, retryAfterMs)).then(() => {
+              this.rateLimitWaiting--
               // Retry after a while, so rate limits allow to call more.
               promise?.sendData()
             })
