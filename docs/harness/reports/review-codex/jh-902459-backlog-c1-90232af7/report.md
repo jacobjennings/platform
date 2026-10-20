@@ -34,7 +34,11 @@ The server test could not start. No new tests were added or extended. The worker
 
 ## Merge status
 
-The provisional report was committed and pushed before this verdict. The merge script and outcome step are pending. No merge is claimed yet.
+The provisional report was committed and pushed before this verdict. The merge script and required outcome step each exited 2 before any write with `harness-reviewmerge: refused before any write: card repo lookup failed:`. Both used the prescribed clean environment and offline board configuration. No board stage change or Orchestrator delivery was confirmed.
+
+After a separate fresh fetch of origin/jj/activity-feed, the reviewed-tip ancestry check exited 1. The reviewed tip is not merged. The script made no merge candidate and ran no merge tests. It wrote no reviewmerge.json or gate-results.jsonl to copy. The frozen_files record is unavailable because routing failed before record creation. Neither configured frozen file changes in this branch.
+
+Raw captures are merge.log and outcome.log in /home/jakej/.local/state/jake-harness/run-evidence/949210448f475b110741be04. The code verdict remains Merge. The operational merge is blocked by the observed harness routing failure.
 
 ## Critical caveats
 
@@ -50,6 +54,6 @@ Server tests could not start because the fork has no harness.toml and dependency
 
 ## RECOMMENDATIONS
 
-Accept the limiter correction and the caller fix. This run declares no follow-on.
+Accept the limiter correction and the caller fix. The Director needs to resolve the merge runner card lookup failure under the required offline environment, then repeat the prescribed merge and outcome commands. This run declares no follow-on.
 
 NOT MERGED
