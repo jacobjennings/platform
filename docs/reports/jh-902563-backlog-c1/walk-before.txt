@@ -1,0 +1,4 @@
+walk before, psql \timing, 21 pages of the board comments query
+run=1 pages=21 total_ms=300.4 max_ms=107.3
+run=2 pages=21 total_ms=275.1 max_ms=106.4
+run=3 pages=21 total_ms=293.2 max_ms=120.3

@@ -1,0 +1,2 @@
+CREATE INDEX
+build_seconds=0.70
