@@ -108,10 +108,46 @@ figures do not establish the corrected endpoint's performance or wire payload.
 
 The dedicated harness worktree was refreshed to its fresh `origin/main`.
 No frozen path or settings file changed in this branch.
-The merge script will merge the report tip into fresh `origin/jj/activity-feed`.
-Dependency setup, targeted validation, the two server test files and syntax checks
-are named done commands before the push. No manual merge or main push is used.
-The merge result and ancestry confirmation will be recorded here after the script.
+The approved script made and pushed merge commit
+`13d7c1e7418474158f03250e17fd68fb28da0877` onto `origin/jj/activity-feed`.
+Its first parent was fresh main `51b5b2b444da43214fb005212e39f3a2cddd920e`.
+Its reviewed tip was `f94302490`, which includes the source and the reviewer fixes.
+There were no conflicts and no tracked tree changes from the checks.
+
+The run folder was read-only to the merge script. It saved records under
+`/tmp/jake-harness-workers/native-run-wSSKQ1/reviewmerge-records-e43umxfc`.
+Copies of `reviewmerge.json`, `gate-results.jsonl` and the raw merge logs are
+beside this report. Record commits remain on the review branch.
+
+The frozen-file field from the script record is:
+
+```json
+"frozen_files": {"paths": ["orchestrator/merge-train.py", "orchestrator/train-queue.py"], "differing_before_merge": [], "restored": [], "differing_after_merge": []}
+```
+
+All five done commands ran on the pushed merge commit, tree
+`e5c816cf6489bae7bc3d0c9e93f80bca95f1d8b6`, with exit status 0.
+The reason for every run was “a done command runs on every merge.”
+
+| Merge check | Exit | Result line |
+| --- | ---: | --- |
+| Dependency install | 0 | Rush install finished successfully. |
+| Targeted server validation | 0 | SUCCESS: 22 operations. |
+| `foundations/server/packages/server/src/__tests__/sessionManager.test.ts` | 0 | Tests: 95 passed, 95 total. |
+| `foundations/server/packages/server/src/__tests__/diagnostics.test.ts` | 0 | Tests: 12 passed, 12 total. |
+| Node and shell syntax checks | 0 | No error output. |
+
+No result was reused. `failing_checks` and `failing_after_merge` are empty.
+The context reader selected the merged validation success lines and session test
+result lines. Each was checked against the raw capture. Its install-log selection
+failed to return JSON, so the install success line was checked directly.
+
+The required outcome command freshly fetched main and confirmed the reviewed tip
+by ancestry. Its merged-stage write and read-back completed without a stage error.
+It queued exactly one message for the host relay, beginning “merged with critical
+caveats” and naming the evidence limits above. The queue receipt is
+`worker/session-outcome.json` in this run folder. Relay delivery itself was not
+checked. No direct board command, browser, real launch or deployment was run.
 
 ## Failing after merge
 
@@ -128,4 +164,4 @@ The merge result and ancestry confirmation will be recorded here after the scrip
 No follow-on is declared. The evidence limits above remain explicit and do not
 create a new gate or a handoff.
 
-NOT MERGED
+MERGED
