@@ -36,6 +36,22 @@ No browser was started and no new capture was made. Report wording changes do no
 
 None.
 
+## Merge record
+
+The merge script pushed 51b5b2b444da43214fb005212e39f3a2cddd920e to origin/jj/activity-feed. Its parents include the submitted review tip 6bce6e93782395933ca32b60bc3acd3b0ef73e68. No conflict occurred and no named item ran. failing_after_merge and failing_checks are empty.
+
+The frozen_files record is:
+
+```json
+"frozen_files": {"paths": ["orchestrator/merge-train.py", "orchestrator/train-queue.py"], "differing_before_merge": [], "restored": [], "differing_after_merge": []}
+```
+
+The prose checker exited 0 with these advisory warnings:
+
+> possible-jargon: Explain 'ReviewMerge' in this sentence if it is a project term.
+
+> paragraph-length: This paragraph has 101 words. The warning limit is 90.
+
 ## Failing after merge
 
 - none
@@ -48,4 +64,4 @@ None.
 
 No follow-on is declared by this run. The evidence does not establish an end-to-end board latency improvement.
 
-NOT MERGED
+MERGED
