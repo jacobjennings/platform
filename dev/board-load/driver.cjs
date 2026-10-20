@@ -88,6 +88,24 @@ async function main() {
     await phase(output)
     for (let iteration = 0; iteration < 20; iteration++) await command(children, 'ping', { iteration })
     await close(children)
+  } else if (output === 'snapshot') {
+    const children = await group(2, false, false, 0)
+    await phase(output)
+    let moving = true
+    const mover = (async () => {
+      for (let iteration = 0; moving; iteration++) {
+        await command([children[1]], iteration % 2 === 0 ? 'setTaskStage' : 'postTaskComment', { iteration })
+      }
+    })().catch(error => { console.error(`mover: ${error.message}`) })
+    for (let iteration = 0; iteration < 3; iteration++) {
+      await command([children[0]], 'readProjectTasksIds', { iteration })
+      await command([children[0]], 'readSnapshotFull', { iteration })
+      await command([children[0]], 'readFilteredWalk', { iteration })
+      await command([children[0]], 'readSnapshotFiltered', { iteration })
+    }
+    moving = false
+    await mover
+    await close(children)
   } else if (output === 'mixed-health') {
     const children = await group(2, false, true)
     const complete = () => {

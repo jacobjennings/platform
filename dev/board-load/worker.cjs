@@ -46,6 +46,87 @@ async function measure(operation, work) {
   if (error) throw new Error(`${operation}: ${error}`)
   return result
 }
+// The complete client read keeps its card identities, so the snapshot read can
+// prove it returned the same set.
+let baselineIds = null
+let snapshotState = null
+async function snapshotConnection () {
+  if (snapshotState === null) {
+    snapshotState = await nativeConnection(config)
+    wrapConnection(snapshotState)
+  }
+  return snapshotState
+}
+
+// The expensive client read: an _id cursor walk with exact totals, then a
+// catch-up walk for rows written since the read began, then a batched id
+// recheck. This is the algorithm in the harness client, repeated here for a
+// filtered query the harness does not expose.
+async function walkRows (client, cls, query, pageSize) {
+  const ids = []
+  let cursor
+  for (;;) {
+    const page = await client.findAll(cls, cursor === undefined ? query : { ...query, _id: { ...(query._id && !Array.isArray(query._id) ? query._id : {}), $gt: cursor } },
+      { limit: pageSize, sort: { _id: 1 }, total: true, showArchived: true })
+    if (!Array.isArray(page) || !Number.isSafeInteger(page.total)) throw new Error('Huly returned an invalid page or omitted its total')
+    for (const row of page) ids.push(row._id)
+    if (page.length < pageSize) return ids
+    cursor = page.at(-1)._id
+  }
+}
+async function filteredRead (client, cls, query, pageSize) {
+  const startedAt = Date.now() - 30000
+  const walked = await walkRows(client, cls, query, pageSize)
+  if (walked.length < pageSize) return { rows: walked, pages: 1 }
+  const changed = await walkRows(client, cls, { ...query, modifiedOn: { $gte: startedAt } }, pageSize)
+  const merged = new Set([...walked, ...changed])
+  const ids = [...merged].sort()
+  const current = new Set()
+  for (let start = 0; start < ids.length; start += 500) {
+    for (const id of await walkRows(client, cls, { ...query, _id: { $in: ids.slice(start, start + 500) } }, pageSize)) current.add(id)
+  }
+  return { rows: ids.filter(id => current.has(id)), pages: Math.ceil(walked.length / pageSize) }
+}
+async function filteredCardsQuery (client, tracker) {
+  const statuses = await client.findAll(tracker.class.IssueStatus,
+    { name: { $in: ['implementing', 'Ready for review'] } }, { showArchived: true })
+  if (statuses.length === 0) throw new Error('The filtered read found no fixture status')
+  return { status: { $in: statuses.map(status => status._id) } }
+}
+
+// One page at a time from the server snapshot read. The card identities are
+// identical in shape to the complete client read, so the two can be compared.
+async function snapshotRead (kind) {
+  const { client, tracker, tags, chunter } = await snapshotConnection()
+  const project = await client.findOne(tracker.class.Project, { identifier: 'JH' }, { showArchived: true })
+  if (!project) throw new Error('Huly project does not exist')
+  const cards = kind === 'filtered' ? await filteredCardsQuery(client, tracker) : {}
+  const sections = [
+    { key: 'cards', _class: tracker.class.Issue, query: cards, limit: 1000 },
+    { key: 'labels', _class: tags.class.TagReference, query: { collection: 'labels' }, limit: 1000 },
+    { key: 'comments', _class: chunter.class.ChatMessage, query: { collection: 'comments' }, limit: 1000 },
+    { key: 'statuses', _class: tracker.class.IssueStatus, query: {}, limit: 500, firstPageOnly: true, scoped: false },
+    { key: 'catalog', _class: tags.class.TagElement, query: { targetClass: tracker.class.Issue }, limit: 1000, firstPageOnly: true, scoped: false }
+  ]
+  const ids = []
+  const counts = {}
+  let cursor
+  let pages = 0
+  let changes = 0
+  let failures = 0
+  for (;;) {
+    const page = await client.findSnapshot({ space: project._id, sections, cursor, includeChanges: true })
+    pages++
+    for (const section of page.sections) counts[section.key] = (counts[section.key] ?? 0) + section.docs.length
+    for (const doc of page.sections[0].docs) ids.push(doc._id)
+    changes += page.changes?.length ?? 0
+    failures += page.failures.length
+    cursor = page.next
+    if (cursor === undefined) break
+  }
+  return { rows: ids, pages, counts, changes, failures }
+}
+
 async function run(operation, request) {
   const tasks = JSON.parse(fs.readFileSync(`${stateFolder}/tasks.json`))
   const task = tasks[(options.lane ?? 0) % tasks.length]
@@ -61,6 +142,30 @@ async function run(operation, request) {
     const result = await board.readSupervisionBoard({ projects: ['VK8'] })
     if (result.tasks?.length !== 6914) throw new Error('Incomplete supervision fixture read')
     return result
+  })
+  if (operation === 'readProjectTasksIds') return measure(operation, async () => {
+    const result = await board.readProjectTasks('JH')
+    if (result.rows.length !== tasks.length) throw new Error('Incomplete project fixture read')
+    baselineIds = result.rows.map(row => row._id).sort()
+    return { rows: baselineIds }
+  })
+  if (operation === 'readSnapshotFull' || operation === 'readSnapshotFiltered') {
+    return measure(operation, async () => {
+      const result = await snapshotRead(operation === 'readSnapshotFiltered' ? 'filtered' : 'full')
+      if (operation === 'readSnapshotFull') {
+        if (result.rows.length !== tasks.length) throw new Error(`Incomplete snapshot fixture read: ${result.rows.length} of ${tasks.length}`)
+        result.matchesBaseline = baselineIds !== null && JSON.stringify([...result.rows].sort()) === JSON.stringify(baselineIds)
+        if (!result.matchesBaseline) throw new Error('Snapshot card set differs from the complete client read')
+      }
+      if (result.failures > 0) throw new Error(`Snapshot reported ${result.failures} failed sections`)
+      return result
+    })
+  }
+  if (operation === 'readFilteredWalk') return measure(operation, async () => {
+    const { client, tracker } = await snapshotConnection()
+    const query = await filteredCardsQuery(client, tracker)
+    const result = await filteredRead(client, tracker.class.Issue, query, config.pageSize)
+    return { rows: result.rows, pages: result.pages }
   })
   if (operation === 'setTaskStage') return measure(operation, () => board.setTaskStage(task.id,
     request.iteration % 2 ? 'stage:Ready for review' : 'stage:implementing'))
