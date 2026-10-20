@@ -8,7 +8,7 @@ The postgres adapter now creates the domain schema's single-field indexes when
 it attaches a workspace, for tables that already exist as well as new ones. On
 the restored JH snapshot the 62 domain tables had only their primary keys,
 except `tags`, which had the one index JH-902491 added. One attach created 197
-secondary indexes, and the build took about 100 seconds on that data.
+secondary indexes, and the build took about two to three minutes on that data.
 
 The measurements do not show a read improvement. With the full set, the
 supervision read at one client went from 56.9 s to 490.3 s, an 8.6 fold
@@ -255,6 +255,7 @@ RECOMMENDATIONS
   dropped the tags indexes was too noisy to decide.
 - Consider moving the index build off the attach path, for example a background
   job after the workspace starts serving. The current build holds the attach for
-  about 100 seconds on this data and a client that connects meanwhile times out.
+  about two to three minutes on this data and a client that connects meanwhile
+  times out.
 - If any further index here is found to hurt, add its field to
   `schemaIndexExclusions` and record the measurement in this report.
