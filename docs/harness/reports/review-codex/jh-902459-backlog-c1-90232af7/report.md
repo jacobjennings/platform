@@ -26,7 +26,7 @@ Dependency installation was attempted with the prescribed /usr/bin/node and TMPD
 
 The role index and reviewed-task-ids.json both assign this review to the source card. Implementation finished at 2026-10-20T00:54:31Z. Review assignment was recorded at 2026-10-20T01:54:38.620641+00:00, after implementation finished.
 
-The prose checker exited 0 and printed no warnings.
+The prose checker exited 0. A later check warned: "paragraph 28: possible-jargon: Explain 'The Director' in this sentence if it is a project term." Director means the project manager responsible for harness faults.
 
 ## Could not check
 
