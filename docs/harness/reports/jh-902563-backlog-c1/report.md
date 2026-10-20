@@ -110,7 +110,7 @@ Per-page rows and times for all 21 pages are in `per-page-before.tsv` and
 | before | 300.4 ms | 275.1 ms | 293.2 ms | 293.2 ms |
 | after | 561.7 ms | 509.8 ms | 471.5 ms | 509.8 ms |
 
-Total rows decoded across the 21 pages: 256,130 before, 181,458 after, a 29
+Total rows decoded across the 21 pages: 256,041 before, 181,458 after, a 29
 percent drop. The worst page falls 45 times.
 
 The wall time is worse on this node. The node holds the table in memory, so the
