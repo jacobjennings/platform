@@ -25,7 +25,16 @@ async function main() {
     const plans = []
     const normalize = query => query.toUpperCase()
       .replace(/'([^']|'')*'/g, '_').replace(/\$[0-9]+/g, '_')
-      .replace(/\bTEXT\b/g, 'STRING').replace(/["\s()]/g, '')
+      .replace(/\b[0-9]+\b/g,'_').replace(/\bBIGINT\b/g,'INT8').replace(/\bNUMERIC\b/g,'DECIMAL')
+      .replace(/\bAS\b/g,'').replace(/\bTEXT\b/g, 'STRING').replace(/["\s()]/g, '')
+    const literal = value => {
+      if (value === null || value === undefined) return 'NULL'
+      if (typeof value === 'boolean') return value ? 'TRUE' : 'FALSE'
+      if (typeof value === 'number' && Number.isFinite(value)) return String(value)
+      if (typeof value === 'string') return "'" + value.replace(/'/g, "''") + "'"
+      if (Array.isArray(value)) return 'ARRAY[' + value.map(literal).join(',') + ']'
+      throw new Error('Unsupported captured SQL parameter type')
+    }
     const used = new Set()
     for (const fingerprint of statistics) {
       if (!/\bFROM\s+(activity|task|tags)\b/i.test(fingerprint.query)) continue
@@ -33,7 +42,10 @@ async function main() {
       if (!statement || used.has(statement.query)) continue
       used.add(statement.query)
       const started = performance.now()
-      const plan = await sql.unsafe('EXPLAIN ANALYZE ' + statement.query, statement.parameters)
+      // CockroachDB EXPLAIN rejects protocol placeholders. Expand only captured
+      // data values with SQL literal quoting, retaining the query's explicit casts.
+      const expanded = statement.query.replace(/\$([0-9]+)/g, (_match, index) => literal(statement.parameters[Number(index)-1]))
+      const plan = await sql.unsafe('EXPLAIN ANALYZE ' + expanded)
       plans.push({ fingerprint: fingerprint.query, measuredCalls: fingerprint.calls, measuredMeanSeconds: fingerprint.mean_seconds,
         query: statement.query, parameters: statement.parameters, elapsedMs: performance.now() - started, plan })
       if (plans.length === 6) break

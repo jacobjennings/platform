@@ -94,7 +94,7 @@ To tear down an interrupted run, use only the IDs in that run's state folder:
 ```sh
 while IFS= read -r cid; do
   docker stop --time 30 "$cid"
-  docker rm "$cid"
+  docker rm -v "$cid"
 done < /absolute/path/to/state/container-ids
 docker network rm "$(cat /absolute/path/to/state/network-id)"
 ```

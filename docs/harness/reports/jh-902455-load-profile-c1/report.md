@@ -4,9 +4,14 @@ Card: http://huly.lan/workbench/hulyaccessevaluation/tracker/JH-902455
 
 ## Result
 
-The matrix is complete. The controlled comparisons and SQL analysis are still
-running. This report will be finalized after teardown. No server optimization
-is included.
+Complete. The benchmark, comparisons, SQL plans and teardown are recorded.
+No server optimization or production configuration change is included.
+
+The 1,000-row page variant cut 16-client p95 attempt duration from 72.1 seconds
+to 2.18 seconds, with zero failures instead of 32 and identical complete card
+results. This measured 33.0-fold comparison uses an existing test configuration
+option. The copied harness files remain unchanged. Draft follow-up cards cover
+that configuration change and the independently observed stall mechanisms.
 
 The local matrix recorded 580 attempts, 148 errors and one partial supervision
 response. Errors are measured outcomes of the real client under load. They are
@@ -49,6 +54,9 @@ says it was taken on 19 October 2026. Counts measured before load mutations:
 | Activity rows | 183,335 |
 | Collaborator documents | 33,763 |
 | Statuses returned by the real status catalog | 22 |
+| Issues with descriptions | 11,119 |
+| Issues with labels | 6,857 |
+| Issues with comments | 10,603 |
 
 The issue counts include VK8 6,914, JH 2,430, archived VK11 1,400 and smaller
 projects. Four projects are active. Seventeen fresh local account identities
@@ -139,40 +147,40 @@ nonempty descriptions among 6,914 cards. The initial one-client run did not
 record nonempty description counts, so its partial-response column is unknown
 rather than a quality guarantee.
 
-| Run | Operation | Clients | n | p50 ms | p95 ms | Max ms | Errors | Partial |
-| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| baseline | connect | 1 | 3 | 97.6 | 455.8 | 455.8 | 0 | 0 |
-| baseline | ping | 1 | 3 | 100.1 | 106.4 | 106.4 | 0 | 0 |
-| baseline | resolveTask | 1 | 3 | 112.6 | 132.3 | 132.3 | 0 | 0 |
-| baseline | readProjectTasks | 1 | 3 | 1784.0 | 2003.9 | 2003.9 | 0 | 0 |
-| baseline | readSupervisionBoard | 1 | 1 | 49629.5 | 49629.5 | 49629.5 | 0 | 0 |
-| baseline | setTaskStage | 1 | 3 | 131.4 | 196.8 | 196.8 | 0 | 0 |
-| baseline | postTaskComment | 1 | 3 | 128.6 | 140.1 | 140.1 | 0 | 0 |
-| baseline | migrateStageLabelsToStatus | 1 | 1 | 65243.2 | 65243.2 | 65243.2 | 0 | 0 |
-| baseline | connect | 4 | 12 | 162.0 | 376.9 | 376.9 | 0 | 0 |
-| baseline | ping | 4 | 12 | 148.5 | 173.7 | 173.7 | 0 | 0 |
-| baseline | resolveTask | 4 | 12 | 196.9 | 240.5 | 240.5 | 0 | 0 |
-| baseline | readProjectTasks | 4 | 12 | 2099.5 | 35860.6 | 35860.6 | 0 | 0 |
-| baseline | readSupervisionBoard | 4 | 4 | 370802.8 | 388080.9 | 388080.9 | 0 | 1 |
-| baseline | setTaskStage | 4 | 12 | 236.4 | 363.1 | 363.1 | 0 | 0 |
-| baseline | postTaskComment | 4 | 12 | 199.1 | 244.8 | 244.8 | 0 | 0 |
-| baseline | migrateStageLabelsToStatus | 4 | 4 | 191546.3 | 195283.1 | 195283.1 | 4 | 0 |
-| baseline | connect | 8 | 24 | 231.4 | 417.2 | 435.7 | 0 | 0 |
-| baseline | ping | 8 | 24 | 206.2 | 277.6 | 296.9 | 0 | 0 |
-| baseline | resolveTask | 8 | 24 | 271.1 | 325.4 | 327.2 | 0 | 0 |
-| baseline | readProjectTasks | 8 | 24 | 35287.9 | 52296.7 | 52301.5 | 8 | 0 |
-| baseline | readSupervisionBoard | 8 | 8 | 30003.7 | 30004.6 | 30004.6 | 8 | 0 |
-| baseline | setTaskStage | 8 | 24 | 30000.8 | 30001.7 | 30001.7 | 24 | 0 |
-| baseline | postTaskComment | 8 | 24 | 323.3 | 29141.8 | 29141.8 | 0 | 0 |
-| baseline | migrateStageLabelsToStatus | 8 | 8 | 64170.1 | 64190.8 | 64190.8 | 8 | 0 |
-| baseline | connect | 16 | 48 | 527.5 | 1237.0 | 1241.3 | 0 | 0 |
-| baseline | ping | 16 | 48 | 456.9 | 571.5 | 571.7 | 0 | 0 |
-| baseline | resolveTask | 16 | 48 | 562.5 | 596.4 | 615.1 | 0 | 0 |
-| baseline | readProjectTasks | 16 | 48 | 44593.0 | 72115.1 | 73065.3 | 32 | 0 |
-| baseline | readSupervisionBoard | 16 | 16 | 30001.9 | 30025.0 | 30025.0 | 16 | 0 |
-| baseline | setTaskStage | 16 | 48 | 30000.4 | 30001.2 | 30001.3 | 32 | 0 |
-| baseline | postTaskComment | 16 | 48 | 715.4 | 980.9 | 1012.6 | 0 | 0 |
-| baseline | migrateStageLabelsToStatus | 16 | 16 | 37363.0 | 37489.3 | 37489.3 | 16 | 0 |
+| Run | Operation | Clients | n | p50 ms | p95 ms | Max ms | Errors | Partial | Censored |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| baseline | connect | 1 | 3 | 97.6 | 455.8 | 455.8 | 0 | 0 | 0 |
+| baseline | ping | 1 | 3 | 100.1 | 106.4 | 106.4 | 0 | 0 | 0 |
+| baseline | resolveTask | 1 | 3 | 112.6 | 132.3 | 132.3 | 0 | 0 | 0 |
+| baseline | readProjectTasks | 1 | 3 | 1784.0 | 2003.9 | 2003.9 | 0 | 0 | 0 |
+| baseline | readSupervisionBoard | 1 | 1 | 49629.5 | 49629.5 | 49629.5 | 0 | n/a | 0 |
+| baseline | setTaskStage | 1 | 3 | 131.4 | 196.8 | 196.8 | 0 | 0 | 0 |
+| baseline | postTaskComment | 1 | 3 | 128.6 | 140.1 | 140.1 | 0 | 0 | 0 |
+| baseline | migrateStageLabelsToStatus | 1 | 1 | 65243.2 | 65243.2 | 65243.2 | 0 | 0 | 0 |
+| baseline | connect | 4 | 12 | 162.0 | 376.9 | 376.9 | 0 | 0 | 0 |
+| baseline | ping | 4 | 12 | 148.5 | 173.7 | 173.7 | 0 | 0 | 0 |
+| baseline | resolveTask | 4 | 12 | 196.9 | 240.5 | 240.5 | 0 | 0 | 0 |
+| baseline | readProjectTasks | 4 | 12 | 2099.5 | 35860.6 | 35860.6 | 0 | 0 | 0 |
+| baseline | readSupervisionBoard | 4 | 4 | 370802.8 | 388080.9 | 388080.9 | 0 | 1 | 0 |
+| baseline | setTaskStage | 4 | 12 | 236.4 | 363.1 | 363.1 | 0 | 0 | 0 |
+| baseline | postTaskComment | 4 | 12 | 199.1 | 244.8 | 244.8 | 0 | 0 | 0 |
+| baseline | migrateStageLabelsToStatus | 4 | 4 | 191546.3 | 195283.1 | 195283.1 | 4 | 0 | 0 |
+| baseline | connect | 8 | 24 | 231.4 | 417.2 | 435.7 | 0 | 0 | 0 |
+| baseline | ping | 8 | 24 | 206.2 | 277.6 | 296.9 | 0 | 0 | 0 |
+| baseline | resolveTask | 8 | 24 | 271.1 | 325.4 | 327.2 | 0 | 0 | 0 |
+| baseline | readProjectTasks | 8 | 24 | 35287.9 | 52296.7 | 52301.5 | 8 | 0 | 0 |
+| baseline | readSupervisionBoard | 8 | 8 | 30003.7 | 30004.6 | 30004.6 | 8 | 0 | 0 |
+| baseline | setTaskStage | 8 | 24 | 30000.8 | 30001.7 | 30001.7 | 24 | 0 | 0 |
+| baseline | postTaskComment | 8 | 24 | 323.3 | 29141.8 | 29141.8 | 0 | 0 | 0 |
+| baseline | migrateStageLabelsToStatus | 8 | 8 | 64170.1 | 64190.8 | 64190.8 | 8 | 0 | 0 |
+| baseline | connect | 16 | 48 | 527.5 | 1237.0 | 1241.3 | 0 | 0 | 0 |
+| baseline | ping | 16 | 48 | 456.9 | 571.5 | 571.7 | 0 | 0 | 0 |
+| baseline | resolveTask | 16 | 48 | 562.5 | 596.4 | 615.1 | 0 | 0 | 0 |
+| baseline | readProjectTasks | 16 | 48 | 44593.0 | 72115.1 | 73065.3 | 32 | 0 | 0 |
+| baseline | readSupervisionBoard | 16 | 16 | 30001.9 | 30025.0 | 30025.0 | 16 | 0 | 0 |
+| baseline | setTaskStage | 16 | 48 | 30000.4 | 30001.2 | 30001.3 | 32 | 0 | 0 |
+| baseline | postTaskComment | 16 | 48 | 715.4 | 980.9 | 1012.6 | 0 | 0 | 0 |
+| baseline | migrateStageLabelsToStatus | 16 | 16 | 37363.0 | 37489.3 | 37489.3 | 16 | 0 | 0 |
 
 ## Request cost
 
@@ -295,25 +303,235 @@ pacing microbenchmark. The scheduled delay itself is observed by the client hook
 
 Twenty pings using the existing shared native connection had median 1.3 ms and
 p95 2.2 ms. The maximum 410.0 ms includes the initial connection. The baseline
-fresh-connection ping median was about 132 ms. This demonstrates the value of
+fresh-connection ping median was 100.1 ms, a measured 77.0-fold median ratio. This demonstrates the value of
 reuse for cold callers. The production broker may already cover some callers,
 so a coverage audit must precede claiming those savings there.
 
 ## Mixed load
 
-Pending completion.
+The run used two launcher/sweep lanes for JH and VK8, two health lanes and one
+migration of 1,000 cards on the shared account. Sweeps had two-minute pauses
+between completed rounds. The initial health loop ran five rounds. Two
+continuation workers added checks later in the long workload. The timestamped
+samples preserve the exact schedule. The reusable driver now keeps health
+checks running until the foreground work ends.
 
-## SQL plans and ranked follow-ups
+| Run | Operation | Clients | n | p50 ms | p95 ms | Max ms | Errors | Partial | Censored |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| mixed | ping | 5 | 10 | 1.9 | 503.4 | 503.4 | 0 | 0 | 0 |
+| mixed | launcher-read | 5 | 6 | 2639.0 | 55400.6 | 55400.6 | 0 | 0 | 0 |
+| mixed | sweep-read | 5 | 6 | 898.0 | 103623.6 | 103623.6 | 0 | 0 | 0 |
+| mixed | migrateStageLabelsToStatus | 5 | 1 | 645392.1 | 645392.1 | 645392.1 | 0 | 0 | 0 |
+| mixed-health | ping | 2 | 4 | 2.7 | 257.6 | 257.6 | 0 | 0 | 0 |
 
-Pending completion. Draft bodies are in [follow-ups.md](follow-ups.md).
+All 1,000 migration cards were verified applied. It took 645,392.1 ms and sent
+5,134 findAll RPCs and 2,000 transaction RPCs, using one native connection.
+Only one rate-limit rejection occurred, but the connection scheduled 505,965 ms
+of client pacing. The retained per-request delay reached 76 ms. This is direct
+evidence that a recovered budget can leave a long-lived connection persistently
+slow. Scheduled delays are observed waits, not a separately measured optimization.
 
-## Validation and final state
+## Larger-page comparison
 
-Pending final checks and teardown. State and recorded resource IDs are in the
-ignored `dev/board-load/state` directory. Only recorded resources from this run
-will be stopped. Pushes go only to the recorded mktemp bare repository.
+| Run | Operation | Clients | n | p50 ms | p95 ms | Max ms | Errors | Partial | Censored |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| pages50 | readProjectTasks | 1 | 3 | 2122.1 | 2503.5 | 2503.5 | 0 | 0 | 0 |
+| pages1000 | readProjectTasks | 16 | 48 | 1765.7 | 2182.9 | 2197.9 | 0 | 0 | 0 |
+
+The 50-row control returned all 2,430 JH rows in three attempts. The 1,000-row
+variant returned the same complete rows in 48 attempts at 16 clients. Canonical
+hashes of the rows, labels and status facts were identical across all 51 samples.
+The full project JSON was about 2.20 MB. FindAll sends fell from 194 to 20 per
+call, a calculated 9.7-fold request reduction. There were no rate-limit responses
+in either page-size variant.
+
+Against the original 16-client, 50-row baseline, p95 attempt duration fell from
+72,115.1 ms to 2,182.9 ms, a measured 33.0-fold ratio. The original baseline had
+32 errors in 48 attempts. The larger-page variant had none. This is a saturation
+comparison, not a claim that every unsaturated call becomes 33 times faster.
+The paired control hashes establish equivalent results on the same fixture state.
+The production harness configuration has not been changed.
+
+## Model and event loop measurements
+
+| Clients | Connect samples | Connect p50 ms | Model p50 ms | Model p95 ms |
+| ---: | ---: | ---: | ---: | ---: |
+| 1 | 3 | 97.6 | 32.7 | 64.0 |
+| 4 | 12 | 162.0 | 33.9 | 121.0 |
+| 8 | 24 | 231.4 | 47.7 | 90.6 |
+| 16 | 48 | 527.5 | 86.7 | 141.7 |
+
+Model timings above use the connect-only samples before their group's budget
+was spent. Every model was 2,067,856 decoded JSON bytes. The full VK8 diagnostic
+response was 12,750,844 JSON bytes and retained 6,913 nonempty descriptions for
+6,914 cards, with no HTTP failure. That diagnostic read took 40,005.3 ms without
+a rate-limit response.
+
+| Workload | Mean CPU, one-core % | One-second delay p95 ms | Max delay ms |
+| --- | ---: | ---: | ---: |
+| JH read, one client | 23.94 | 10.90 | 24.02 |
+| VK8 supervision, one client | 7.30 | 10.68 | 85.66 |
+| VK8 supervision, four clients | 5.07 | 10.58 | 103.42 |
+| Stage writes after saturation, eight clients | 1.98 | 10.58 | 110.82 |
+| Supervision after saturation, sixteen clients | 2.30 | 10.58 | 112.13 |
+| Shared-account connect probes | 2.33 | 10.58 | 114.16 |
+
+CPU is equivalent percent of one core, not percent of the whole host. Delay is
+the p95 of the one-second p95 delay samples, at 10 ms histogram resolution. The
+statistics use sample timestamps inside measured call windows. Per-phase CPU
+profiles also include the phase boundaries. The first migration phase included
+a cooldown before the next phase, so its profile's idle share is not an isolated
+migration CPU measurement.
+
+
+## SQL plans
+
+The diagnostic pass captured real parameterized SELECTs from the source-built
+transactor. Six plans were matched to the slowest available statement-statistics
+fingerprints with captured parameters. Aggregate statistics were saved before
+the diagnostic pass. EXPLAIN ANALYZE required quoted SQL literals because this
+CockroachDB version rejects protocol placeholders in EXPLAIN.
+
+| Captured query shape | Stats calls | Stats mean ms | Replay execution ms | Main rows scanned | Main KV bytes |
+| --- | ---: | ---: | ---: | ---: | --- |
+| Activity grouped by space, workspace initialization | 5 | 116.21 | 85 | 187,581 | 232 MiB |
+| Activity page returning 50 rows | 3 | 106.93 | 4 | 2,048 | 2.0 MiB |
+| Activity catch-up returning zero rows | 100 | 84.21 | 124 | 187,581 | 232 MiB |
+| Exact count for an attached-card batch | 100 | 75.06 | 90 | 187,581 | 232 MiB |
+| Exact count for zero-row catch-up | 100 | 74.67 | 90 | 187,581 | 232 MiB |
+| Exact count during cursor recheck | 1,230 | 37.09 | 107 | 185,660 | 230 MiB |
+
+The plans ran after the mutation workloads. Activity had grown from the initial
+183,335 rows to 187,581. Replay values came from the diagnostic pass, so its
+EXPLAIN execution time is a new measurement of the same SQL shape, not a replay
+of an original slow request's exact timestamp or card list.
+
+The zero-row catch-up scan and repeated counts read almost the entire activity
+table. The paginated 50-row read can stop early through the primary key. A small
+page result alone therefore hides the cost of its accompanying exact count and
+catch-up scans. Index work must target the Postgres/CockroachDB expressions and
+the actual task, tags and activity tables.
+
+## Ranked improvements
+
+Expected gains below are estimates unless explicitly labeled measured. Targets
+for architectural changes are conditional engineering goals, not benchmarked
+implementations. Each row has its own local draft body in
+[follow-ups.md](follow-ups.md). No live cards were posted.
+
+| Rank | Change and evidence | Expected gain and basis | Risk | Touches |
+| ---: | --- | --- | --- | --- |
+| 1 | Bound managed Postgres reservations. Ten cached idle leases exhausted the ten-connection pool while model loads waited without rate-limit responses | Remove global hangs. Target subsecond healthy connects instead of observed bounds above 511 seconds. No fix was benchmarked | High. Reservation and transaction lifetime | Fork |
+| 2 | Correct limiter rejection accounting and future timestamps. Shared burst had 23,753 rejection responses | Raised-limit control measured 838.1x p95 ratio. At the same quota, eliminating the artificial 150-second extension is expected to yield roughly 2–6x on this burst, an estimate | Medium to high. Fairness and quota policy | Fork |
+| 3 | Decay client pacing after healthy responses. One rejection left 506 seconds of scheduled pacing in the mixed migration | Estimated 3–5x on this steady workload, bounded by real quota and write cost. Not an implemented comparison | Medium. Congestion control | Fork client library |
+| 4 | Increase validated page size through the existing harness setting. 194 findAll sends became 20 | Measured 33.0x p95 attempt ratio at 16 clients, with all 48 calls complete and matching hashes. Calculated 9.7x request reduction | Low to medium. Payload size, server caps and moving cards | Harness |
+| 5 | Cancel retries, unfinished connects and HTTP work at the owning deadline. 569 late collaborator attempts appeared in a later phase | No isolated latency gain measured. Removes demonstrated stale traffic and makes deadlines and profiling ownership reliable | Medium. Uncertain writes require read-back | Both |
+| 6 | Use existing fetchMarkups in bounded description batches. Current read made 6,914 collaborator requests | A batch of 50 would need 139 requests, a calculated 49.7x HTTP reduction. Estimated 1.2–3x whole-read gain after other bottlenecks are removed. Storage work remains per document | Medium. Completeness and failure semantics | Harness, using existing fork API |
+| 7 | Add actual CockroachDB board indexes, especially activity attachedTo and catch-up predicates. Zero-row scans read 232 MiB | Estimated 10–100x on selective SQL components. Whole-call gain depends on pacing and round trips. Index benefit is not measured until the follow-up creates and tests it | Medium. Write cost, index size and upgrade rollout | Fork |
+| 8 | Add a consistent bulk board snapshot API. Current project read makes 194 queries plus repeated exact counts | Target 10–100x full-read latency from far fewer calls. The measured full VK8 payload is 12.75 MB. This is an architectural target, not a measured implementation | High. Snapshot consistency, permissions and bounded responses | Both |
+| 9 | Materialize a permission-aware board read model with explicit freshness | Target 0.5–5 second warm full reads versus the 49.6 second one-client baseline, about 10–100x. Basis is avoiding repeated joins, descriptions and network calls | High. Invalidation, collaborator revisions and revocation | Both |
+| 10 | Batch guarded migration mutations and verified outcomes. A 300-card run made 2,849 RPC sends | Estimated 2–10x. Keeping eleven one-second pauses alone limits the 65.2 second baseline's gain to below 6x. Larger gains need fair scheduling to replace blind pauses | High. Partial success and idempotency | Both |
+| 11 | Extend existing persistent-connection coverage where cold calls remain | Measured 77.0x median ping ratio in the local comparison. Much smaller gain for full reads. Fix pacing first and audit existing broker coverage | Medium. Cancellation, stale state and lifecycle | Harness |
+| 12 | Separate service identities or choose explicit quotas. Separate identities removed observed throttling but exposed pool starvation | No reliable end-to-end gain established for separate accounts. Raising the local limit gave the measured 838.1x control, with capacity and fairness tradeoffs | Medium to high. More accounts do not fix the pool | Harness and fork settings |
+| 13 | Persist a validated Node model snapshot. Each connect transferred 2.07 MB decoded JSON | Estimated 1.1–1.5x on an unsaturated single connect, using the measured 32.7 ms model portion of a 97.6 ms median connect as an upper-bound basis. A hash-check RPC is still rate-limited | Medium. Workspace keys, corruption and invalidation | Fork client library |
+
+The shortest route to a measured improvement is the existing page-size option,
+with rollout limits and completeness checks. Fix reservation starvation and
+throttling correctness before relying on more accounts or broader connection
+reuse. Bulk reads and a read-side view are the stronger architectural candidates
+for another order of magnitude on full supervision exports.
+
+
+## Validation
+
+The source service and client dependency build passed. Service bundles passed.
+Dependency installation passed with the supported Node and browser download
+skipped. Standalone CJS syntax checks, shell syntax, Compose configuration and
+Git whitespace checks passed. All 32 baseline CPU profile JSON files validated.
+The page variants passed completeness and canonical-hash equality checks.
+
+The fresh one-command check used:
+
+```sh
+BOARD_LOAD_NODE=/path/to/supported/node BOARD_LOAD_SCENARIOS=shared bash dev/board-load/run.sh
+```
+
+It restored the snapshot into a new isolated stack, verified the 2,430-card
+fixture, ran twenty shared pings, captured six matched SQL plans and removed
+its containers and network. The full matrix and other scenarios were measured
+individually in the main run. This shortened check validates the complete
+bring-up and cleanup path without repeating the long saturation experiments.
+
+An initial SQL-plan attempt failed because EXPLAIN rejects placeholders. SQL
+literal quoting fixed it, and six actual-parameter plans then passed. A profiling
+hook initially tried to replace a getter export. Wrapping cached module exports
+fixed it and subsequent real runs exercised the hook. The first cleanup retained
+two anonymous Redpanda volumes. Their recorded mount events identified them for
+removal. Cleanup now uses docker rm -v, verified with a newly recorded disposable
+container and anonymous volume. These fixture issues are fixed.
+
+The 148 matrix errors, partial description response and censored pool-stall
+probes are application findings retained in the report, not passing API results.
+
+No new unit-test file was added. The card explicitly requests this load test.
+The search for adjacent tests was:
+
+```sh
+rg -n '(board-load|server-hook|prepare-migration)' --glob '*test*' --glob '*spec*' dev docs/harness
+```
+
+It found no existing unit tests for these standalone files. The full suite was
+not run. No test ran on another branch or against a live board.
+
+## Artifacts and final state
+
+The main raw artifacts remain local under `dev/board-load/results/`:
+
+- `baseline.jsonl`, `stall-shared.jsonl`, `stall-separate.jsonl`, `stall-raised.jsonl`.
+- `shared.jsonl`, `mixed.jsonl`, `mixed-health.jsonl`, `pages50.jsonl`, `pages1000.jsonl`.
+- `baseline-<clients>-<operation>.cpuprofile` for all 32 matrix phases.
+- `CPU.*.cpuprofile` from the transactor's --cpu-prof process runs.
+- `event-loop.jsonl`, `metrics-summary.json`, `page-equivalence.json`.
+- `statement-statistics-before-diagnostic.json`, `sql-selects.jsonl`, `explain-analyze.json`.
+- `blocked-pool.json`, `blocked-transactor-sessions.tsv`, `separate-hellos.json`.
+- `teardown-verification.json`, resource manifests, build and fixture logs.
+
+The fresh-command verification is in `dev/board-load/results/run.iedylA/`.
+Its original restored scale counts are in `fixture-scale.json`.
+
+All 25 recorded containers, both recorded networks and all three recorded
+anonymous volumes, including the cleanup check's temporary resources, are gone.
+The original Redpanda volumes were matched to recorded container IDs through
+Docker mount events before removal. Cleanup now removes owned anonymous volumes
+with docker rm -v. Only resources created by this work were stopped or removed.
+
+Exact teardown used the recorded live container IDs, kept the runner until the
+artifact ownership was corrected, then removed its recorded network ID. The
+reusable equivalent is in the runner's EXIT trap:
+
+```sh
+while IFS= read -r cid; do
+  docker stop --time 30 "$cid"
+  docker rm -v "$cid"
+done < /path/to/run-state/container-ids
+docker network rm "$(cat /path/to/run-state/network-id)"
+```
+
+The ignored fixture state remains, about 4.8 GiB, and raw results about 185 MiB
+as measured by du after teardown. The local jh-902455-minio:local image remains
+as a rerun cache. Source builds and dependency caches remain. No process or
+container from this benchmark is intentionally left running. Snapshot data,
+credentials and raw profiles were not committed or sent to an external service.
+Pushes went only to the mktemp bare repository recorded in
+`dev/board-load/push-target.local`, never to origin or a live board.
+
 
 ## RECOMMENDATIONS
 
-Finish the controlled comparisons and use their evidence to order the local
-draft cards. No change should claim a speedup by returning less description data.
+Create the local draft follow-ups in the chosen board workflow after review.
+Prioritize reservation lifetime, limiter behavior, client pacing and the measured
+page-size configuration gain. Preserve the same snapshot and canonical-result
+checks for each before and after run. Repeat promising changes with production
+CPU and memory quotas before predicting production capacity. Keep all fixture
+data and profiles local. No optimization should claim a speedup by returning less
+description data.

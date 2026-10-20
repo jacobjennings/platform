@@ -29,12 +29,12 @@ cleanup() {
     if [[ "$cid" == "${runner:-}" ]]; then continue; fi
     docker logs "$cid" > "$run_results/container-$cid.log" 2>&1 || true
     docker stop --time 30 "$cid" >/dev/null 2>&1 || true
-    docker rm "$cid" >/dev/null 2>&1 || true
+    docker rm -v "$cid" >/dev/null 2>&1 || true
   done < <(sort -u "$ids")
   if test -n "${runner:-}"; then
     docker exec --user 0 "$runner" chown -R "$(id -u):$(id -g)" "$runner_results" "$runner_state" >/dev/null 2>&1 || true
     docker stop --time 30 "$runner" >/dev/null 2>&1 || true
-    docker rm "$runner" >/dev/null 2>&1 || true
+    docker rm -v "$runner" >/dev/null 2>&1 || true
   fi
   if test -s "$run_state/network-id"; then docker network rm "$(cat "$run_state/network-id")" >/dev/null 2>&1 || true; fi
   printf 'Local state: %s\nResults: %s\n' "$run_state" "$run_results"

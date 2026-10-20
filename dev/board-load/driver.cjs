@@ -88,19 +88,29 @@ async function main() {
     await phase(output)
     for (let iteration = 0; iteration < 20; iteration++) await command(children, 'ping', { iteration })
     await close(children)
+  } else if (output === 'mixed-health') {
+    const children = await group(2, false, true)
+    const complete = () => {
+      const file=path.join(folder,'mixed.jsonl')
+      if (!fs.existsSync(file)) return false
+      const rows=fs.readFileSync(file,'utf8').trim().split('\n').filter(Boolean).map(JSON.parse)
+      return rows.filter(r=>r.operation==='launcher-read').length>=6 && rows.filter(r=>r.operation==='sweep-read').length>=6
+        && rows.some(r=>r.operation==='migrateStageLabelsToStatus')
+    }
+    do { await command(children,'ping'); if (!complete()) await sleep(60000) } while (!complete())
+    await close(children)
   } else if (output === 'mixed') {
     const children = await group(5, false, true)
     execFileSync(process.execPath, [path.join(__dirname, 'prepare-migration.cjs'), 'reset'])
     await phase(output)
-    // Two launcher/sweep lanes, two health lanes and one 1000-card migration.
-    const schedule = [
-      (async () => { for (let i = 0; i < 3; i++) { await command([children[0]], 'sweep', { project: 'JH' }); if (i < 2) await sleep(120000) } })(),
-      (async () => { for (let i = 0; i < 3; i++) { await command([children[1]], 'sweep', { project: 'VK8' }); if (i < 2) await sleep(120000) } })(),
-      (async () => { for (let i = 0; i < 5; i++) { await command([children[2]], 'ping'); if (i < 4) await sleep(60000) } })(),
-      (async () => { for (let i = 0; i < 5; i++) { await command([children[3]], 'ping'); if (i < 4) await sleep(60000) } })(),
-      command([children[4]], 'migrateStageLabelsToStatus', { mixed: true })
-    ]
-    await Promise.all(schedule)
+    let complete=false
+    const foreground = Promise.all([
+      (async () => { for (let i=0;i<3;i++) { await command([children[0]],'sweep',{project:'JH'}); if (i<2) await sleep(120000) } })(),
+      (async () => { for (let i=0;i<3;i++) { await command([children[1]],'sweep',{project:'VK8'}); if (i<2) await sleep(120000) } })(),
+      command([children[4]],'migrateStageLabelsToStatus',{mixed:true})
+    ]).finally(()=>{complete=true})
+    const health = async child => { do { await command([child],'ping'); if (!complete) await sleep(60000) } while (!complete) }
+    await Promise.all([foreground,health(children[2]),health(children[3])])
     await close(children)
   } else throw new Error('Unknown scenario')
   await phase('idle')

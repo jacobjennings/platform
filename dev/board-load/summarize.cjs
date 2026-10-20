@@ -18,6 +18,7 @@ console.log('| Run | Operation | Clients | n | p50 ms | p95 ms | Max ms | Errors
 console.log('| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |')
 for (const [key, rows] of groups) {
   const [run, operation, concurrency] = key.split('|')
+  const partial = operation === 'readSupervisionBoard' && rows.some(r=>r.ok) && rows.filter(r=>r.ok).every(r=>r.nonemptyDescriptions === undefined) ? 'n/a' : rows.filter(r => r.qualityOk === false || (r.operation === 'readSupervisionBoard' && r.nonemptyDescriptions !== undefined && r.nonemptyDescriptions < 6913)).length
   const times = rows.map(r => r.ms).sort((a,b) => a-b)
-  console.log(`| ${run} | ${operation} | ${concurrency} | ${rows.length} | ${percentile(times,.5).toFixed(1)} | ${percentile(times,.95).toFixed(1)} | ${times.at(-1).toFixed(1)} | ${rows.filter(r => !r.ok).length} | ${rows.filter(r => r.qualityOk === false || (r.operation === 'readSupervisionBoard' && r.nonemptyDescriptions !== undefined && r.nonemptyDescriptions < 6913)).length} | ${rows.filter(r => r.censored).length} |`)
+  console.log(`| ${run} | ${operation} | ${concurrency} | ${rows.length} | ${percentile(times,.5).toFixed(1)} | ${percentile(times,.95).toFixed(1)} | ${times.at(-1).toFixed(1)} | ${rows.filter(r => !r.ok).length} | ${partial} | ${rows.filter(r => r.censored).length} |`)
 }
