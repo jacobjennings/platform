@@ -84,6 +84,7 @@ import {
   type TxAdapter
 } from '@hcengineering/server-core'
 import type postgres from 'postgres'
+import { createSlowSql, timedSqlCursor } from './diagnostics'
 import {
   getDocFieldsByDomains,
   getSchema,
@@ -116,12 +117,13 @@ async function * createCursorGenerator (
   sql: string,
   params: any,
   schema: Schema,
-  bulkSize = 1000
+  bulkSize = 1000,
+  log: Pick<MeasureContext, 'info'>
 ): AsyncGenerator<Doc[]> {
   const cursor = client.unsafe(sql, doFetchTypes ? params : convertArrayParams(params)).cursor(bulkSize)
   try {
     let docs: Doc[] = []
-    for await (const part of cursor) {
+    for await (const part of timedSqlCursor(cursor, sql, log)) {
       docs.push(...part.filter((it) => it != null).map((it) => parseDoc(it as any, schema)))
       if (docs.length > 0) {
         yield docs
@@ -224,7 +226,8 @@ abstract class PostgresAdapterBase implements DbAdapter {
     protected readonly workspaceId: WorkspaceUuid,
     protected readonly hierarchy: Hierarchy,
     protected readonly modelDb: ModelDb,
-    readonly mgrId: string
+    readonly mgrId: string,
+    protected readonly diagnosticsCtx?: MeasureContext
   ) {
     this._helper = new DBCollectionHelper(this.client, this.workspaceId)
   }
@@ -259,7 +262,7 @@ abstract class PostgresAdapterBase implements DbAdapter {
 
     const rawClient = client.raw()
 
-    const cursor: AsyncGenerator<Doc[]> = createCursorGenerator(rawClient, finalSql, vars.getValues(), schema)
+    const cursor: AsyncGenerator<Doc[]> = createCursorGenerator(rawClient, finalSql, vars.getValues(), schema, 1000, this.diagnosticsCtx ?? { info: () => {} })
     return {
       next: async (count: number): Promise<T[] | null> => {
         const result = await cursor.next()
@@ -529,7 +532,7 @@ abstract class PostgresAdapterBase implements DbAdapter {
                 .cursor(options.bulkSize ?? 1000)
 
               try {
-                for await (const part of cursor) {
+                for await (const part of timedSqlCursor(cursor, finalSql, ctx)) {
                   for (const pp of part) {
                     result.push(pp)
                     currentSize += estimateDocSize(pp)
@@ -1548,7 +1551,7 @@ abstract class PostgresAdapterBase implements DbAdapter {
         WHERE "workspaceId" = '${workspaceId}'
       `
 
-      return createCursorGenerator(client.raw(), sql, undefined, schema, limit)
+      return createCursorGenerator(client.raw(), sql, undefined, schema, limit, ctx)
     }
     let bulk: AsyncGenerator<Doc[]>
 
@@ -1601,7 +1604,7 @@ abstract class PostgresAdapterBase implements DbAdapter {
         WHERE "workspaceId" = '${workspaceId}'
       `
 
-      return createCursorGenerator(client.raw(), sql, undefined, schema, limit)
+      return createCursorGenerator(client.raw(), sql, undefined, schema, limit, ctx)
     }
     let bulk: AsyncGenerator<Doc[]>
 
@@ -2164,14 +2167,16 @@ export async function createPostgresAdapter (
 ): Promise<DbAdapter> {
   const client = getDBClient(url)
   const connection = await client.getClient()
+  const slowSql = createSlowSql(ctx)
   return new PostgresAdapter(
-    createDBClient(connection),
-    client.mgr,
+    slowSql.wrapClient(createDBClient(connection)),
+    slowSql.wrapMgr(client.mgr),
     client,
     wsIds.uuid,
     hierarchy,
     modelDb,
-    'default-' + wsIds.url
+    'default-' + wsIds.url,
+    ctx
   )
 }
 /**
@@ -2186,14 +2191,16 @@ export async function createPostgresTxAdapter (
 ): Promise<TxAdapter> {
   const client = getDBClient(url)
   const connection = await client.getClient()
+  const slowSql = createSlowSql(ctx)
 
   return new PostgresTxAdapter(
-    createDBClient(connection),
-    client.mgr,
+    slowSql.wrapClient(createDBClient(connection)),
+    slowSql.wrapMgr(client.mgr),
     client,
     wsIds.uuid,
     hierarchy,
     modelDb,
-    'tx' + wsIds.url
+    'tx' + wsIds.url,
+    ctx
   )
 }
