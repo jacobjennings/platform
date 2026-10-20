@@ -18,6 +18,11 @@ Two indexes are left out of the shipped set, `activity.attachedTo` and
 `task.space`. Both changed a measured read for the worse. Every other schema
 index is created.
 
+The one client project read is still slower with the shipped set. It measured a
+median of 3,211 ms against 1,870 ms before, on a quiet stack. That change is not
+attributed to a single index, so the set should not be enabled in production
+until the follow-up attribution runs.
+
 The after matrix was not completed. Groups at 1 and 4 clients were measured.
 The 8 and 16 client groups were stopped when the run budget ran out, and the
 last part of the 4 client group was measured after the two indexes under test
@@ -80,6 +85,11 @@ from `after-indexes.csv`:
 `space_members` is an inverted index, so `USING gin` from the schema reached
 CockroachDB. No `createDomainIndexes` failure was logged.
 
+The shipped set was checked once more on a fresh stack built from the tip. One
+attach produced 585 index column rows against 591 for the full set.
+`activity_attachedto` and `task_space` were absent, and `activity__class` and
+`task_attachedto` were present.
+
 ## Indexes left out
 
 Both were dropped in the live measurement stack and are not in the patch.
@@ -115,7 +125,7 @@ a query figure.
 | 1 | connect | 104 | 96 | not measured |
 | 1 | ping | 104 | 96 | not measured |
 | 1 | resolveTask | 111 | 108 | not measured |
-| 1 | readProjectTasks | 1,870 | 3,485 | 3,042 |
+| 1 | readProjectTasks | 1,870 | 3,485 | 3,211 |
 | 1 | readSupervisionBoard | 56,876 | 490,311 | 61,790 |
 | 1 | setTaskStage | 116 | 159 | not measured |
 | 1 | postTaskComment | 111 | 141 | not measured |
@@ -140,10 +150,13 @@ is in `run.kgax5B/baseline.jsonl` in the worktree's ignored `dev/board-load/resu
 The after run (`run.bY0Ijj`) reached group 1 with the full set and group 4 with
 the shipped set. The one client shipped-set values come from a separate
 `driver.cjs diagnostic` and two `driver.cjs pages50` probes on the same live
-stack. Group 4 ran entirely after `activity.attachedTo` and `task.space` were
-dropped, so it is the shipped set. Its project read median of 13,037 is 13
-percent above the before group median of 12,176, while its single fast batch
-moved from 3.0 s to 3.4 s and its slow batch from 29.0 s to 28.7 s.
+stack. The 3,211 ms project read is the median of a quiet `pages50` probe on the
+fresh shipped-set stack (`run.7QzLu0`), with 3,126, 3,211 and 3,979 ms. The
+`diagnostic` probe on the earlier stack read 3,042 ms. Group 4 ran entirely
+after `activity.attachedTo` and `task.space` were dropped, so it is the shipped
+set. Its project read median of 13,037 is 13 percent above the before group
+median of 12,176, while its single fast batch moved from 3.0 s to 3.4 s and its
+slow batch from 29.0 s to 28.7 s.
 
 A probe after also dropping the three `tags` schema indexes read 4,171, 3,142
 and 2,513 ms at one client. It overlapped the start of group 8, so it is not
@@ -169,10 +182,12 @@ Every remaining secondary index is below 0.1 MB.
 | `activity` | `activity_space` | 18.512 |
 | `task` | `task__class` | 1.127 |
 
-The build ran inside the first attach. It started when the first client opened
-the workspace at 19:13:06 UTC and the catalog count was stable at 197 indexes at
-19:15:01 UTC. The wait loop polled every 5 s and required 15 s of stability, so
-the build is between 95 and 115 seconds for the full set on this snapshot.
+The build ran inside the first attach. It was measured twice. The first full
+set build started when the first client opened the workspace at 19:13:06 UTC and
+the catalog count was stable at 197 indexes at 19:15:01 UTC. The second, on the
+shipped set, started at 19:40:40 UTC and was stable at 585 column rows at
+19:43:39 UTC. The wait loop polled every 5 s and required 15 s of stability, so
+the builds took about 115 and 180 seconds. Host load differed between the two.
 
 That build blocks the attach. The rig's smoke step connects with a 30 second
 client timeout and failed on the first after run while the indexes were still
@@ -222,16 +237,22 @@ The measurement stack was changed after group 4 began. I dropped
 and dropped the three `tags` indexes at 19:34:37 UTC for one probe. The
 `after-indexes.csv` capture was taken at 19:16 UTC and is the full set. The size
 capture was taken at 19:35 UTC after the drops. The after run was stopped at
-19:36 UTC.
+19:36 UTC. A third run (`run.7QzLu0`) started at 19:40 UTC from the tip. It
+verified the shipped set on a fresh stack and produced the quiet `pages50`
+project read. It was stopped after that probe.
 
 RECOMMENDATIONS
 
+- Do not enable the remaining set in production until the one client project
+  read change is attributed. It is 1,870 ms before and 3,211 ms with the
+  shipped set on a quiet stack.
 - Run a full 1, 4, 8 and 16 client before and after matrix on an idle host,
   with the after set in the patch, before treating any of these numbers as a
   latency result. The arms here were single, sequential and shared the host.
-- Attribute the remaining one client project read change, 1.87 s to 3.04 s.
-  Candidate indexes are `task_attachedTo`, `tags__class`, `tags_space` and
-  `tags_attachedto`. The probe that dropped the tags indexes was too noisy.
+- Attribute the remaining one client project read change, 1.87 s to 3.21 s.
+  The candidates are `task_attachedTo`, `task__class`, `tags__class`,
+  `tags_space`, `tags_attachedto` and the `collaborator` indexes. A probe that
+  dropped the tags indexes was too noisy to decide.
 - Consider moving the index build off the attach path, for example a background
   job after the workspace starts serving. The current build holds the attach for
   about 100 seconds on this data and a client that connects meanwhile times out.
