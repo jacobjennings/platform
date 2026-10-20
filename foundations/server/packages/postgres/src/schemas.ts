@@ -303,6 +303,34 @@ export function translateDomain (domain: string): string {
   return domain.replaceAll('-', '_')
 }
 
+export interface DomainIndexDefinition {
+  name: string
+  columns: string
+}
+
+/**
+ * Indexes for query shapes that the per-field indexes from the domain schema
+ * do not cover. The postgres adapter creates them with CREATE INDEX IF NOT
+ * EXISTS when it attaches a workspace, so a workspace whose table already
+ * exists picks them up on its next start. Every entry is selected by a
+ * captured EXPLAIN ANALYZE plan, see
+ * docs/harness/reports/jh-902491-backlog-c3/report.md.
+ */
+export const domainIndexDefinitions: Record<string, DomainIndexDefinition[]> = {
+  task: [
+    {
+      name: 'task_workspace_space_id',
+      columns: '"workspaceId", space, _id'
+    }
+  ],
+  tags: [
+    {
+      name: 'tags_workspace_space_id',
+      columns: '"workspaceId", space, _id'
+    }
+  ]
+}
+
 export const domainSchemas: Record<string, Schema> = {
   [DOMAIN_SPACE]: spaceSchema,
   [DOMAIN_TX]: txSchema,
