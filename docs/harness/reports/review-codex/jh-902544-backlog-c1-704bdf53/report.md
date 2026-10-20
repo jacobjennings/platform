@@ -49,7 +49,7 @@ The smallest fix was to withdraw the conclusion and state the measurement limits
 The same correction appears in docs/harness/reports/jh-902544-backlog-c1/report.md.
 The supplied guide enforces "Reject unsafe or wrong behavior and false claims about code or test results."
 
-Blocking claim defect, corrected: docs/reports/jh-902544-backlog-c1/attach-probe.cjs:37.
+Blocking claim defect, corrected: docs/reports/jh-902544-backlog-c1/attach-probe.cjs:39.
 The evidence narrative described an independent connection with a five second timeout.
 The pool implementation in foundations/core/packages/postgres-base/src/index.ts:198 contradicts that interpretation.
 The smallest fix was to correct the report rather than rerun or modify the historical probe.
@@ -115,8 +115,19 @@ No new validation capture was made because the reviewer changed only prose.
 ## Merge record
 
 The final verdict report is committed and pushed before the merge script runs.
-Merge execution and fresh ancestry confirmation are pending.
-The outcome step remains required.
+The script pushed merge commit 8b7a0c39cb56836847149dd1eff97c75ab37b1bf.
+Its tested and pushed hashes match.
+There were no conflicts, named test runs, setup failures or failing checks.
+Fresh ancestry checks passed for the original reviewed commit and 63e6245db3396643ed9f7021697eb2802c7b6cc6.
+The merge record is copied beside this report on the review branch.
+The script emitted no gate-results.jsonl because no test ran.
+An empty gate-results.jsonl beside this report records that absence.
+
+The record contains `"frozen_files": {"paths": ["orchestrator/merge-train.py", "orchestrator/train-queue.py"], "differing_before_merge": [], "restored": [], "differing_after_merge": []}`.
+No frozen-file restoration commit was needed.
+The outcome command follows the final report push.
+The board remains offline under the brief's prohibition on real board writes.
+No live card-stage update is claimed.
 
 ## Failing after merge
 
@@ -132,4 +143,4 @@ The outcome step remains required.
 Keep the distinction between merged code and unproven deployment acceptance explicit.
 This run assigns no follow-on and authorizes no deployment.
 
-NOT MERGED
+MERGED
