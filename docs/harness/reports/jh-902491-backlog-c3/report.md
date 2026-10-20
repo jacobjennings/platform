@@ -4,11 +4,11 @@ Card: http://huly.lan/workbench/hulyaccessevaluation/tracker/JH-902491
 
 ## Result
 
-One index is implemented and shipped. It cuts the per-card label lookup from
-10,605 decoded rows to 6, and from 8 ms to 0.9 ms, on the exact query shape the
-board issues. It is 1.3 MB and builds in 0.49 s on the restored snapshot.
-End-to-end board read latency is unchanged within the spread of the session,
-and single-card write latency is unchanged.
+One index is implemented. The reported plan comparison reduces the per-card
+label lookup from 10,605 decoded rows to 6, and from 8 ms to 0.9 ms.
+It uses the board query shape with a substituted real card identifier.
+The reported index size is 1.3 MB and its build took 0.49 s on the restored snapshot.
+The samples do not establish an end-to-end read or write latency improvement.
 
 Two other candidate indexes were measured and rejected. The task project index
 reduced scanned rows 5 to 9 times but made the JH project read and the VK8
@@ -17,8 +17,9 @@ an index join that made the comment page 8 times slower. Neither is in the
 patch. The status JSON expression was evaluated and has no captured query, so
 no index was added for it.
 
-The card's acceptance is met for the index that shipped: the captured plan shows
-fewer rows scanned on the exact parameters. No speedup of the board read is
+The card's acceptance is met for the index that shipped: the reported plan shows
+fewer rows scanned on substituted parameters. Exact captured tag parameters
+were unavailable. No speedup of the board read is
 claimed. The measurements show that at this fixture's data size the board read
 is limited by per-card document reads and collaborator description fetches, not
 by the scans these indexes can remove.
@@ -184,9 +185,8 @@ Single-client read percentiles from the reduced matrix:
 The final arm of that matrix is not a clean index comparison. It ran with the
 task and tags-space indexes, both later rejected, and its worker recorded
 `rateLimited=1` and 15 paced requests, because the aborted supervision read had
-spent the shared account's request budget. The clean comparison is the warm
-repeated reads above, where the shipped index leaves the project read at
-baseline. The one supervision sample with only the shipped index is 36.8 s,
+spent the shared account's request budget. The warm repeated reads above were sequential and do not establish
+that the shipped index leaves the project read at baseline. The one supervision sample with only the shipped index is 36.8 s,
 against a median of 38.1 s from three samples without indexes.
 
 Single samples are not tail estimates. The percentiles describe the recorded
@@ -204,8 +204,7 @@ Single-card writes at one client, before and after:
 The shipped index adds one entry per `TagReference` write. Label references are
 written only when labels change, so the write cost does not fall on ordinary
 card updates. The samples above come from the reduced matrix, whose final arm
-also held the rejected task and tags-space indexes, so they are an upper bound
-for the shipped set. The bulk migration write path was not measured because of
+also held the rejected task and tags-space indexes, so they do not isolate or bound the write cost of the shipped index. The bulk migration write path was not measured because of
 the limiter stall above.
 
 ## Rollout and existing workspaces
