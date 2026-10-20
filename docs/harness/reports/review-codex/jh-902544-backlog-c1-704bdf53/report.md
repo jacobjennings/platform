@@ -55,6 +55,10 @@ The pool implementation in foundations/core/packages/postgres-base/src/index.ts:
 The smallest fix was to correct the report rather than rerun or modify the historical probe.
 Both corrections are in c57f88113538be0125205424ab81e3f5d8a62799.
 
+The prescribed outcome step also crossed the requested offline board boundary.
+The command reported successful stage write and read-back through the live project configuration.
+No additional board call was made to investigate it.
+
 ## Evidence and checks
 
 I read the requested commit log, the implementation diff, the changed evidence scripts and both report copies.
@@ -109,7 +113,7 @@ The full transactor attach and independent connection were not demonstrated.
 The embedded capture comment lists two report.md attachments and no PNG capture.
 I did not contact the live board to retrieve attachments.
 No browser, graphical application, deployment or GPU process was started.
-No live Huly stack was contacted.
+The performance review made no live Huly contact. The outcome boundary exception is recorded below.
 No new validation capture was made because the reviewer changed only prose.
 
 ## Merge record
@@ -125,9 +129,17 @@ An empty gate-results.jsonl beside this report records that absence.
 
 The record contains `"frozen_files": {"paths": ["orchestrator/merge-train.py", "orchestrator/train-queue.py"], "differing_before_merge": [], "restored": [], "differing_after_merge": []}`.
 No frozen-file restoration commit was needed.
-The outcome command follows the final report push.
-The board remains offline under the brief's prohibition on real board writes.
-No live card-stage update is claimed.
+The outcome command exited 0 after the record push and confirmed fresh ancestry.
+It queued one caveated merge message for the host-side relay.
+The queued message is saved in session-outcome.json beside this report.
+
+Unexpected boundary behavior: the outcome command accepted the stage write and read-back despite the offline environment.
+Its board_cli helper invokes the CLI without forwarding HULY_BOARD_CONFIG as request settings.
+The CLI loads project settings, where the board is live.
+The outcome message contains no stage failure, which means set_merged completed its read-back check.
+This contradicts the earlier expectation that the environment would keep this path offline.
+No further board call was made.
+This harness issue is outside the reviewed project range.
 
 ## Failing after merge
 
