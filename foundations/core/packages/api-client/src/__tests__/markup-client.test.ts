@@ -59,7 +59,7 @@ describe('MarkupOperations', () => {
       const result = await operations.fetchMarkup(objectClass, objectId, objectAttr, markupRef, 'markup')
 
       const collabId = makeCollabId(objectClass, objectId, objectAttr)
-      expect(mockCollaborator.getMarkup).toHaveBeenCalledWith(collabId, markupRef)
+      expect(mockCollaborator.getMarkup).toHaveBeenCalledWith(collabId, markupRef, undefined)
       expect(result).toBe(mockMarkup)
     })
 
@@ -116,7 +116,7 @@ describe('MarkupOperations', () => {
       const result = await operations.uploadMarkup(objectClass, objectId, objectAttr, content, 'markup')
 
       const collabId = makeCollabId(objectClass, objectId, objectAttr)
-      expect(mockCollaborator.createMarkup).toHaveBeenCalledWith(collabId, content)
+      expect(mockCollaborator.createMarkup).toHaveBeenCalledWith(collabId, content, undefined)
       expect(result).toBe(mockMarkupRef)
     })
 
@@ -148,7 +148,7 @@ describe('MarkupOperations', () => {
       const result = await operations.uploadMarkup(objectClass, objectId, objectAttr, '', 'markup')
 
       const collabId = makeCollabId(objectClass, objectId, objectAttr)
-      expect(mockCollaborator.createMarkup).toHaveBeenCalledWith(collabId, '')
+      expect(mockCollaborator.createMarkup).toHaveBeenCalledWith(collabId, '', undefined)
       expect(result).toBe(mockMarkupRef)
     })
 

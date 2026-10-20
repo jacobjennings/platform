@@ -1619,8 +1619,8 @@ export class TSessionManager implements SessionManager {
       let rateLimit: RateLimitInfo | undefined
       if (request.method !== 'ping') {
         rateLimit = this.checkRate(service)
-        // If remaining is 0, rate limit is exceeded
-        if (rateLimit?.remaining === 0) {
+        // The last accepted request has no remaining capacity but no retry delay.
+        if (rateLimit?.retryAfter !== undefined) {
           this.logRateLimitRefusal(service, rateLimit, request.method)
           service.updateLast()
           void ws.send(
@@ -1723,8 +1723,8 @@ export class TSessionManager implements SessionManager {
     operation: (ctx: ClientSessionCtx, rateLimit: RateLimitInfo | undefined) => Promise<void>
   ): Promise<RateLimitInfo | undefined> {
     const rateLimitStatus = this.checkRate(service)
-    // If remaining is 0, rate limit is exceeded
-    if (rateLimitStatus?.remaining === 0) {
+    // The last accepted request has no remaining capacity but no retry delay.
+    if (rateLimitStatus?.retryAfter !== undefined) {
       this.logRateLimitRefusal(service, rateLimitStatus, method)
       return await Promise.resolve(rateLimitStatus)
     }

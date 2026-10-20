@@ -52,19 +52,23 @@ import {
   createMarkupOperations
 } from './markup'
 import { type ConnectOptions, type PlatformClient, WithMarkup } from './types'
-import { getWorkspaceToken } from './utils'
+import { getWorkspaceToken, throwIfAborted } from './utils'
 
 /**
  * Create platform client
  * @public */
 export async function connect (url: string, options: ConnectOptions): Promise<PlatformClient> {
-  const config = await loadServerConfig(url)
+  const { signal } = options
+  throwIfAborted(signal)
+  const config = await loadServerConfig(url, signal)
+  throwIfAborted(signal)
 
   // getWorkspaceToken already selected the workspace, so reuse its login info
   // instead of a second selectWorkspace round trip to the accounts service.
-  const { endpoint, token, info: wsLoginInfo } = await getWorkspaceToken(url, options, config)
+  const { endpoint, token, info: wsLoginInfo } = await getWorkspaceToken(url, options, config, signal)
   const accountClient = getAccountClient(config.ACCOUNTS_URL, token)
   const socialIds = await accountClient.getSocialIds(true)
+  throwIfAborted(signal)
 
   const account: Account = {
     uuid: wsLoginInfo.account,
@@ -97,12 +101,13 @@ async function createClient (
     return import(/* webpackChunkName: "client" */ '@hcengineering/client-resources')
   })
 
-  const { socketFactory, connectionTimeout } = options
+  const { socketFactory, connectionTimeout, signal } = options
 
   const clientFactory = await getResource(client.function.GetClient)
   const connection = await clientFactory(token, endpoint, {
     socketFactory,
-    connectionTimeout
+    connectionTimeout,
+    signal
   })
 
   return new PlatformClientImpl(url, workspaceUuid, token, config, connection, account)
@@ -281,18 +286,20 @@ class PlatformClientImpl implements PlatformClient {
     objectId: Ref<Doc>,
     objectAttr: string,
     markup: MarkupRef,
-    format: MarkupFormat
+    format: MarkupFormat,
+    signal?: AbortSignal
   ): Promise<string> {
-    return await this.markup.fetchMarkup(objectClass, objectId, objectAttr, markup, format)
+    return await this.markup.fetchMarkup(objectClass, objectId, objectAttr, markup, format, signal)
   }
 
   async fetchMarkups (
     objectClass: Ref<Class<Doc>>,
     objectAttr: string,
     items: MarkupFetchItem[],
-    format: MarkupFormat
+    format: MarkupFormat,
+    signal?: AbortSignal
   ): Promise<string[]> {
-    return await this.markup.fetchMarkups(objectClass, objectAttr, items, format)
+    return await this.markup.fetchMarkups(objectClass, objectAttr, items, format, signal)
   }
 
   async uploadMarkup (
@@ -300,9 +307,10 @@ class PlatformClientImpl implements PlatformClient {
     objectId: Ref<Doc>,
     objectAttr: string,
     markup: string,
-    format: MarkupFormat
+    format: MarkupFormat,
+    signal?: AbortSignal
   ): Promise<MarkupRef> {
-    return await this.markup.uploadMarkup(objectClass, objectId, objectAttr, markup, format)
+    return await this.markup.uploadMarkup(objectClass, objectId, objectAttr, markup, format, signal)
   }
 
   // AsyncDisposable

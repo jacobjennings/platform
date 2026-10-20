@@ -66,6 +66,12 @@ export interface ClientFactoryOptions {
   ctx?: MeasureContext
   onDialTimeout?: () => void | Promise<void>
 
+  /**
+   * Cancels the connection and the work it owns. Aborting closes the socket
+   * and rejects any request that is still pending, including a model load.
+   */
+  signal?: AbortSignal
+
   useGlobalRPCHandler?: boolean
 }
 

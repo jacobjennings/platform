@@ -65,6 +65,47 @@ const pingTimeout = 10 * SECOND
 const hangTimeout = 5 * 60 * SECOND
 const dialTimeout = 30 * SECOND
 
+function abortError (signal?: AbortSignal): Error {
+  const reason = signal?.reason
+  if (reason instanceof Error) {
+    return reason
+  }
+  const error = new Error('The operation was aborted')
+  error.name = 'AbortError'
+  return error
+}
+
+function throwIfAborted (signal?: AbortSignal): void {
+  if (signal?.aborted === true) {
+    throw abortError(signal)
+  }
+}
+
+async function waitFor (ms: number, signal?: AbortSignal): Promise<void> {
+  throwIfAborted(signal)
+  if (signal === undefined) {
+    await new Promise((resolve) => setTimeout(resolve, ms))
+    return
+  }
+  await new Promise<void>((resolve, reject) => {
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const onAbort = (): void => {
+      if (timer !== undefined) {
+        clearTimeout(timer)
+      }
+      reject(abortError(signal))
+    }
+    timer = setTimeout(() => {
+      signal.removeEventListener('abort', onAbort)
+      resolve()
+    }, ms)
+    signal.addEventListener('abort', onAbort, { once: true })
+    if (signal.aborted) {
+      onAbort()
+    }
+  })
+}
+
 class RequestPromise {
   startTime: number = Date.now()
   handleTime?: (diff: number, result: any, serverTime: number, queue: number, toRecieve: number) => void
@@ -72,6 +113,7 @@ class RequestPromise {
   resolve!: (value?: any) => void
   reject!: (reason?: any) => void
   reconnect?: () => void
+  reconnectTimer?: ReturnType<typeof setTimeout>
 
   // Required to properly handle rate limits
   sendData: () => void = () => {}
@@ -103,6 +145,8 @@ class Connection implements ClientConnection {
   binaryMode = false
   compressionMode = false
   private readonly requests = new Map<ReqId, RequestPromise>()
+  private readonly retryTimers = new Set<ReturnType<typeof setTimeout>>()
+  private readonly abortHandler: (() => void) | undefined
   private lastId = 0
   private interval: number | undefined
   private dialTimer: number | undefined
@@ -159,6 +203,17 @@ class Connection implements ClientConnection {
     this.pushHandler(handler)
     this.onConnect = opt?.onConnect
 
+    const signal = opt?.signal
+    if (signal !== undefined) {
+      this.abortHandler = () => {
+        void this.close()
+      }
+      signal.addEventListener('abort', this.abortHandler, { once: true })
+      if (signal.aborted) {
+        this.abortHandler()
+      }
+    }
+
     this.scheduleOpen(this.ctx, false)
   }
 
@@ -167,7 +222,9 @@ class Connection implements ClientConnection {
   }
 
   async getLastHash (ctx: MeasureContext): Promise<string | undefined> {
+    throwIfAborted(this.opt?.signal)
     await this.waitOpenConnection(ctx)
+    throwIfAborted(this.opt?.signal)
     return this.lastHash
   }
 
@@ -212,15 +269,36 @@ class Connection implements ClientConnection {
     }, pingTimeout)
   }
 
+  private clearRetryTimers (): void {
+    for (const timer of this.retryTimers) {
+      clearTimeout(timer)
+      this.rateLimitWaiting--
+    }
+    this.retryTimers.clear()
+    for (const req of this.requests.values()) {
+      if (req.reconnectTimer !== undefined) {
+        clearTimeout(req.reconnectTimer)
+        req.reconnectTimer = undefined
+      }
+    }
+  }
+
   async close (): Promise<void> {
     this.closed = true
     clearTimeout(this.openAction)
     clearTimeout(this.dialTimer)
     clearInterval(this.interval)
-    for (const handler of this.onConnectHandlers) {
+    this.clearRetryTimers()
+    if (this.abortHandler !== undefined) {
+      this.opt?.signal?.removeEventListener('abort', this.abortHandler)
+    }
+    const handlers = this.onConnectHandlers.splice(0, this.onConnectHandlers.length)
+    for (const handler of handlers) {
       handler.reject(new Error('Connection closed'))
     }
-    for (const req of this.requests.values()) {
+    const requests = [...this.requests.values()]
+    this.requests.clear()
+    for (const req of requests) {
       req.reject(new Error('Connection closed'))
     }
     if (this.websocket !== null) {
@@ -329,11 +407,16 @@ class Connection implements ClientConnection {
           if (remaining === 0) {
             const retryAfterMs = retryAfter ?? 1
             this.rateLimitWaits.wait(retryAfterMs, ++this.rateLimitWaiting)
-            void new Promise((resolve) => setTimeout(resolve, retryAfterMs)).then(() => {
+            const timer = setTimeout(() => {
+              this.retryTimers.delete(timer)
               this.rateLimitWaiting--
-              // Retry after a while, so rate limits allow to call more.
-              promise?.sendData()
-            })
+              // A closed connection owns no further attempt.
+              if (!this.closed) {
+                // Retry after a while, so rate limits allow to call more.
+                promise?.sendData()
+              }
+            }, retryAfterMs)
+            this.retryTimers.add(timer)
             return
           }
         }
@@ -683,18 +766,22 @@ class Connection implements ClientConnection {
     measure?: (time: number, result: any, serverTime: number, queue: number, toRecieve: number) => void
     allowReconnect?: boolean
     overrideId?: number
+    /** Cancels this request and the retry work it owns. */
+    signal?: AbortSignal
   }): Promise<any> {
     return this.ctx.with(
       'send-request',
       {},
       async (ctx) => {
+        const signal = data.signal
+        throwIfAborted(signal)
         if (this.closed) {
           throw new PlatformError(new Status(Severity.ERROR, platform.status.ConnectionClosed, {}))
         }
 
         if (this.slowDownTimer > 0) {
           // We need to wait a bit to avoid ban.
-          await new Promise((resolve) => setTimeout(resolve, this.slowDownTimer))
+          await waitFor(this.slowDownTimer, signal)
         }
 
         if (data.once === true) {
@@ -712,48 +799,93 @@ class Connection implements ClientConnection {
         const promise = new RequestPromise(data.method, data.params, data.handleResult)
         promise.handleTime = data.measure
 
-        const w = this.waitOpenConnection(ctx)
-        if (w instanceof Promise) {
-          await w
+        const onAbort =
+          signal === undefined
+            ? undefined
+            : (): void => {
+                if (this.requests.get(id) === promise) {
+                  this.requests.delete(id)
+                  promise.reject(abortError(signal))
+                }
+                if (promise.reconnectTimer !== undefined) {
+                  clearTimeout(promise.reconnectTimer)
+                  promise.reconnectTimer = undefined
+                }
+              }
+        if (onAbort !== undefined) {
+          signal?.addEventListener('abort', onAbort, { once: true })
         }
-        if (data.method !== pingConst) {
-          this.requests.set(id, promise)
-        }
-        promise.sendData = (): void => {
-          if (this.websocket?.readyState === ClientSocketReadyState.OPEN) {
-            promise.startTime = Date.now()
 
-            if (data.method !== pingConst) {
-              const dta = this.rpcHandler.serialize(
-                {
-                  method: data.method,
-                  params: data.params,
-                  meta: ctx.extractMeta(),
-                  id,
-                  time: Date.now()
-                },
-                this.binaryMode
-              )
+        try {
+          const w = this.waitOpenConnection(ctx)
+          if (w instanceof Promise) {
+            await w
+          }
+          throwIfAborted(signal)
+          if (this.closed) {
+            throw new PlatformError(new Status(Severity.ERROR, platform.status.ConnectionClosed, {}))
+          }
+          if (data.method !== pingConst) {
+            this.requests.set(id, promise)
+          }
+          promise.sendData = (): void => {
+            if (this.closed || signal?.aborted === true || (data.method !== pingConst && this.requests.get(id) !== promise)) {
+              return
+            }
+            if (this.websocket?.readyState === ClientSocketReadyState.OPEN) {
+              promise.startTime = Date.now()
 
-              this.websocket?.send(dta)
-            } else {
-              this.websocket?.send(pingConst)
+              if (data.method !== pingConst) {
+                const dta = this.rpcHandler.serialize(
+                  {
+                    method: data.method,
+                    params: data.params,
+                    meta: ctx.extractMeta(),
+                    id,
+                    time: Date.now()
+                  },
+                  this.binaryMode
+                )
+
+                this.websocket?.send(dta)
+              } else {
+                this.websocket?.send(pingConst)
+              }
             }
           }
-        }
-        if (data.allowReconnect ?? true) {
-          promise.reconnect = () => {
-            setTimeout(async () => {
-              // In case we don't have response yet.
-              if (this.requests.has(id) && ((await data.retry?.()) ?? true)) {
-                promise.sendData()
+          if (data.allowReconnect ?? true) {
+            promise.reconnect = () => {
+              if (promise.reconnectTimer !== undefined) {
+                clearTimeout(promise.reconnectTimer)
               }
-            }, 50)
+              promise.reconnectTimer = setTimeout(() => {
+                promise.reconnectTimer = undefined
+                if (this.closed || this.requests.get(id) !== promise) {
+                  return
+                }
+                void (async () => {
+                  // In case we don't have response yet.
+                  if (this.requests.has(id) && ((await data.retry?.()) ?? true)) {
+                    promise.sendData()
+                  }
+                })()
+              }, 50)
+            }
           }
-        }
-        promise.sendData()
-        if (data.method !== pingConst) {
-          return await promise.promise
+          throwIfAborted(signal)
+          promise.sendData()
+          if (data.method !== pingConst) {
+            return await promise.promise
+          }
+        } catch (err: any) {
+          if (signal?.aborted === true) {
+            throw abortError(signal)
+          }
+          throw err
+        } finally {
+          if (onAbort !== undefined) {
+            signal?.removeEventListener('abort', onAbort)
+          }
         }
       },
       { method: data.method },
@@ -764,7 +896,7 @@ class Connection implements ClientConnection {
   }
 
   loadModel (last: Timestamp, hash?: string): Promise<Tx[] | LoadModelResponse> {
-    return this.sendRequest({ method: 'loadModel', params: [last, hash] })
+    return this.sendRequest({ method: 'loadModel', params: [last, hash], signal: this.opt?.signal })
   }
 
   getAccount (): Promise<Account> {

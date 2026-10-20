@@ -1,0 +1,14 @@
+{
+  "sourceBase": "789f1bb61",
+  "harnessCommit": "90545543416a9a2702ef3c89999cf0967280e726",
+  "snapshot": {
+    "cockroach-backup.tar": "17e974ec2b2f0e1ea6543be244d311cab3ecefa500f7eac288c97f6877cd798d",
+    "minio-files.tar": "98a347a97b40f06922d027f6407478103bcf7469319b50d066d3592fada49021"
+  },
+  "minioSource": {
+    "tag": "RELEASE.2025-04-22T22-12-26Z",
+    "archiveSha256": "1a63209927b9d1fb239b2a776b7b01d1902eff19379a108f4bc7005edcc0968c",
+    "go": "go1.27.1-X:nodwarf5",
+    "cgo": false
+  }
+}

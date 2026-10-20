@@ -58,7 +58,7 @@ describe('getWorkspaceToken', () => {
         workspace: 'test-workspace'
       })
 
-      expect(loadServerConfig).toHaveBeenCalledWith('https://api.example.com')
+      expect(loadServerConfig).toHaveBeenCalledWith('https://api.example.com', undefined)
       expect(mockAccountClient.login).toHaveBeenCalledWith('user@example.com', 'password123')
       expect(mockAccountClient.selectWorkspace).toHaveBeenCalledWith('test-workspace')
 
