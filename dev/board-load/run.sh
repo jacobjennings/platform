@@ -23,6 +23,13 @@ ids="$run_state/container-ids"
 cleanup() {
   result=$?
   trap - EXIT INT TERM
+  # Restore the bundle this invocation instrumented, including on failure.
+  if test -f "$run_state/bundle-before-sql.js"; then
+    if ! cp "$run_state/bundle-before-sql.js" "$repo/pods/server/bundle/bundle.js"; then
+      printf 'Failed to restore the pre-diagnostic bundle\n' >&2
+      result=1
+    fi
+  fi
   # Only resources explicitly recorded for this invocation are touched.
   while IFS= read -r cid; do
     test -n "$cid" || continue
@@ -107,6 +114,7 @@ for scenario in ${BOARD_LOAD_SCENARIOS:-baseline stall-shared stall-separate sta
 done
 exec_node sql-diagnostics.cjs > "$run_results/sql-statistics.log" 2>&1
 cp "$run_results/statement-statistics.json" "$run_results/statement-statistics-before-diagnostic.json"
+cp "$repo/pods/server/bundle/bundle.js" "$run_state/bundle-before-sql.js"
 "$node_bin" "$folder/patch-sql-profile.cjs"
 PROFILE_SQL=true "${compose[@]}" up -d --no-deps transactor > "$run_results/sql-service.log" 2>&1
 "${compose[@]}" ps -aq >> "$ids"

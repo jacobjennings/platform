@@ -1,6 +1,6 @@
 'use strict'
-// Run only inside the dedicated fixture runner. Records IDs before stopping
-// this scenario's workers. Never searches or signals the host process namespace.
+// Run only inside the dedicated fixture runner. Record pending probes only.
+// The driver owns its children and their termination.
 const fs = require('node:fs')
 const path = require('node:path')
 const folder = process.env.BOARD_LOAD_RESULTS || path.join(__dirname,'results')
@@ -21,6 +21,8 @@ for (const entry of fs.readdirSync('/proc').filter(x=>/^\d+$/.test(x))) {
 }
 if (!driver || workers.length!==16) throw new Error('Owned scenario inventory did not match')
 fs.writeFileSync(`${state}/censored-process-ids.json`,JSON.stringify({driver,workers},null,2))
+// Exclusive creation prevents repeated collection. Stop accepting live rows first.
+fs.writeFileSync(`${state}/censor-stop-${driver}`, scenario, { flag: 'wx' })
 for (const {pid,options} of workers) {
   const file=`${folder}/heartbeat-${pid}.json`
   const hello=JSON.parse(fs.readFileSync(`${folder}/separate-hellos.json`))[options.lane]
@@ -33,7 +35,4 @@ for (const {pid,options} of workers) {
     error:'Stopped after sustained zero-rate-limit stall with exhausted SQL pool. Duration is a measured lower bound.',
     ...Object.fromEntries(Object.entries(row).filter(([k])=>!['operation','lane','elapsedMs'].includes(k)))})+'\n')
 }
-for (const {pid} of workers) process.kill(pid,'SIGTERM')
-process.kill(driver,'SIGTERM')
-fs.writeFileSync(`${folder}/phase`,'idle')
-console.log('Recorded 16 censored probes and stopped their recorded owned processes')
+console.log('Recorded 16 censored probes and requested cleanup from their owning driver')

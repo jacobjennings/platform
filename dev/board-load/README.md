@@ -25,7 +25,8 @@ account, transactor and collaborator bundles run on the cached matching release
 base images. The small config service supplies the API configuration normally
 served by the front end. The browser UI, fulltext and optional integrations are
 not part of this board workload. All containers explicitly use `runc`, without
-device requests. The services and runner have four-hour lifetimes. Each worker
+device requests. The transactor, config service and runner have four-hour lifetimes.
+The remaining services rely on the runner's EXIT cleanup. Each worker
 has a forty-minute deadline per operation and each scenario a ninety-minute deadline.
 
 The first pass uses one shared local account, a fresh native connection per
@@ -82,6 +83,7 @@ separate SQL diagnostic pass. It records the first parameterized SELECT of each
 shape. It does not change source or record writes. SQL capture is disabled in
 the latency baseline. The runner restarts only its own transactor afterward for
 a diagnostic pass and EXPLAIN ANALYZE of matching slow statement fingerprints.
+The EXIT trap restores the pre-diagnostic bundle so later runs do not inherit SQL capture.
 
 To print an existing run again:
 
@@ -103,7 +105,9 @@ A separate-account run can expose pool starvation in asynchronous presence
 triggers. `debug-pool.cjs` inspects managed reservations through the local
 inspector after a stall. It does not change server state beyond a brief debugger
 pause. `collect-censored.cjs` is an emergency collector restricted to the
-dedicated Docker runner and the known separate-account scenario.
+dedicated Docker runner and the known separate-account scenario. It records probes
+without signaling discovered processes. It requests termination through a local
+control file. The owning driver signals only the children it started.
 
 Raw database snapshots, credentials, logs and profiles must stay local. The
 committed report contains aggregate measurements and draft follow-up work.

@@ -17,6 +17,16 @@ The local matrix recorded 580 attempts, 148 errors and one partial supervision
 response. Errors are measured outcomes of the real client under load. They are
 not successful calls. A 30 second timeout must not be treated as a fast read.
 
+## Measurement limits
+
+The reported ratios describe the recorded attempts in this exploratory run.
+The comparison arms were not interleaved across at least three independent
+repetitions with host load recorded. The review guide therefore does not accept
+these ratios as established speedup measurements. Repeated samples inside one
+arm do not replace independent repetitions. None of the ratios establishes a
+production performance gain. The reviewer located the raw captures in the implementation worktree and
+checked the attempt tables against those files.
+
 ## Environment and isolation
 
 Server source base: `789f1bb61`, from the fork's `jj/activity-feed` branch.
@@ -112,7 +122,8 @@ worktree and a four-hour sleep. It ran `seed-accounts.cjs`, `grant-fixture.cjs`,
 `prepare-migration.cjs`. Services were then started with the same Compose
 project. `worker.cjs` smoke mode verified the connection and fixture count before
 `driver.cjs baseline` drove the matrix.
-The runner and server have explicit lifetimes. Each operation has a forty-minute
+The runner, transactor and config service have explicit lifetimes.
+The other containers rely on the runner's EXIT cleanup. Each operation has a forty-minute
 worker bound and each scenario a ninety-minute bound.
 
 ## Method

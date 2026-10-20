@@ -26,7 +26,7 @@ function launch(options) {
   child.once('exit', () => active.delete(child))
   child.queue = []
   child.on('message', row => {
-    if (row.operation) fs.appendFileSync(samples, JSON.stringify({ run: output, ...row }) + '\n')
+    if (row.operation && !fs.existsSync(path.join(stateFolder, `censor-stop-${process.pid}`))) fs.appendFileSync(samples, JSON.stringify({ run: output, ...row }) + '\n')
     if (row.ready || row.done) child.queue.shift()?.resolve(row)
   })
   child.on('exit', code => { for (const item of child.queue.splice(0)) item.reject(new Error(`Worker exited ${code}`)) })
@@ -116,4 +116,10 @@ async function main() {
   await phase('idle')
 }
 const deadline = setTimeout(() => { for (const child of active) child.kill('SIGTERM'); process.exitCode = 124 }, 90 * 60 * 1000)
-main().catch(e => { console.error(e.message); process.exitCode = 1 }).finally(() => { for (const child of active) child.kill('SIGTERM'); clearTimeout(deadline) })
+// The emergency collector requests termination. Only this parent signals children
+// it actually started. This also prevents later replies duplicating censored rows.
+const censorStop = setInterval(() => {
+  if (output !== 'stall-separate' || !fs.existsSync(path.join(stateFolder, `censor-stop-${process.pid}`))) return
+  for (const child of active) child.kill('SIGTERM')
+}, 1000)
+main().catch(e => { console.error(e.message); process.exitCode = 1 }).finally(() => { for (const child of active) child.kill('SIGTERM'); clearTimeout(deadline); clearInterval(censorStop) })
