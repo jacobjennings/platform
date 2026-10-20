@@ -79,11 +79,17 @@ The marked attachment comment lists report.md twice and no image captions. The l
 
 ## Merge record
 
-Merge is pending execution of the approved script. This report was committed and pushed before that execution. No named merge test or done command is requested. Review checks above ran on the work branch.
+The final Merge. report was committed as 36aa43c82c7bce35afc395adf54a67bf8dd85d83 and pushed before the merge attempt. The required script was called from the dedicated refreshed harness worktree with that tip, the source card link and HARNESS_REVIEWMERGE_CONFIG preserved.
+
+The merge command exited 2 before any write with "harness-reviewmerge: refused before any write: card repo lookup failed: ". The required outcome command also exited 2 with that exact message. lib/repo_routing.py resolve_repo requires a board read when the shared settings contain repository routes. The brief requires offline board configuration and prohibits live board contact. No routing bypass or alternate merge command was used.
+
+No reviewmerge.json or merge gate-results.jsonl was produced because routing failed before record creation. Therefore no frozen_files line exists to quote. The reviewed range and reviewer fixes change neither frozen path. The copied gate-results.jsonl is the review's file-runner record, not a merge record. direct-results.jsonl holds the isolated package checks.
+
+A fresh fetch of origin/jj/activity-feed resolved to 45533155e932bed30bcc996413362b12e2df3cac. Both ancestry checks returned 1, so neither the reviewed source tip nor the applied-fix tip is present there. No merge commit was pushed. No named merge test or done command ran. Review checks above ran on work-branch commits. No card stage changed and no outcome message was delivered through the refused command.
 
 ## Critical caveats
 
-Database-backed checks and deployment remain unverified. No live board write is authorized by this brief. The outcome command will use offline board configuration.
+The merge and outcome commands are blocked by the required offline board configuration. Database-backed checks and deployment remain unverified. No live board write was made.
 
 ## Failing after merge
 
@@ -95,6 +101,6 @@ Database-backed checks and deployment remain unverified. No live board write is 
 
 ## RECOMMENDATIONS
 
-Accept the diagnostics with the applied fixes. This run declares no follow-on and performs no deployment.
+The code verdict is Merge. The Director needs to resolve the harness routing conflict with the offline-board instruction before the required merge command can proceed. This run declares no follow-on and performs no deployment.
 
 NOT MERGED
