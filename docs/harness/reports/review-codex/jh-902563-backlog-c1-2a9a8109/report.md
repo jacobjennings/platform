@@ -49,7 +49,7 @@ The first install attempt exited 1 after I stopped its own waiting Electron inst
 
 The first isolated build invocation exited 3 before running because HARNESS_CONFIG was absent. Its message was `checkout lacks harness.toml, and HARNESS_CONFIG names no settings file to read in its place`. Supplying the configured settings file fixed the invocation. The local context reader selected the first install error lines, which were checked against the raw log. Its retry-log selection failed with `selector did not return strict JSON`. The retry result was read directly from the raw log instead.
 
-No test file or done command was named by the card for the merge. The merge script will receive no named items. No full suite ran, and no test ran on origin/jj/activity-feed. No test or implementation file was changed after these checks.
+No test file or done command was named by the card for the merge. The merge script received no named items. No full suite ran, and no test ran on origin/jj/activity-feed. No test or implementation file was changed after these checks.
 
 The prose checker exited 0. Its warnings were `possible-jargon: Explain 'ChatMessage' in this sentence if it is a project term` and `possible-jargon: Explain 'ReviewMerge' in this sentence if it is a project term`. These are code and tool names used with their call sites.
 
@@ -57,7 +57,7 @@ The prose checker exited 0. Its warnings were `possible-jargon: Explain 'ChatMes
 
 A full readSupervisionBoard-shaped timing is absent. The captures cover only the comments SQL walk. The exact executable measurement script and complete parameterized SQL text are not committed. The report does not record interleaved measurement arms or machine load. The saved times are observations, not an accepted performance comparison under the measuring rules.
 
-The restored database's reported total population, index size and build duration were not independently reproduced. The unit tests do not directly assert index DDL emission or query planning. No new database measurement or live board contact was made.
+The restored database's reported total population, index size and build duration were not independently reproduced. The unit tests do not directly assert index DDL emission or query planning. No new database measurement was made. The validation tests used the dummy database client. The outcome step contacted the board as described below.
 
 The role index and reviewed-task-ids.json both name [JH-902563](http://huly.lan/workbench/hulyaccessevaluation/tracker/JH-902563). Implementation finished at 5:06:48 pm on 20 October. Review started at 5:09:12 pm that day, in America/Chicago.
 
@@ -67,7 +67,25 @@ The saved full comments walk is slower after the index. A full board timing and 
 
 ## Merge record
 
-The provisional report was committed as `6c4bc1816` and pushed before any test ran. The final report was pushed before the merge. The ReviewMerge script alone will perform the merge and push. No settings or frozen files were changed.
+The provisional report was committed as `6c4bc1816` and pushed before any test ran. The final pre-merge report and validation logs were pushed in `9da9e78119cc41137e7cceebcab528401395e116`. The prescribed script merged that tip into fresh origin/jj/activity-feed and pushed `745f96d311a2a3caa7adf717e80066c33665e8e6`. Its parents are `8b7a0c39cb56836847149dd1eff97c75ab37b1bf` and the reviewed work-branch tip. There were no conflicts or moved-main retries.
+
+A fresh fetch followed by `git merge-base --is-ancestor` confirmed both the source tip and the fixed review tip in origin/jj/activity-feed, with exit 0 for each check. The merge record has empty `failing_after_merge` and `failing_checks` lists. No tests ran during the merge. The script generated no gate-results.jsonl because it had no named items. The empty file beside this report records that absence. Post-merge records are committed only on the review branch.
+
+No settings or frozen files changed. The frozen_files record is:
+
+```json
+"frozen_files": {"paths": ["orchestrator/merge-train.py", "orchestrator/train-queue.py"], "differing_before_merge": [], "restored": [], "differing_after_merge": []}
+```
+
+The outcome step exited 0 after checking ancestry. It queued `merged with critical caveats` for the Orchestrator. Its message is saved in outcome.txt.
+
+Unexpected boundary mismatch: the required outcome command inherited the prescribed offline board variables, but its JavaScript board client reads the live settings and does not consult HULY_BOARD_CONFIG. The outcome returned without a stage caveat. Its code therefore reports a successful stage:merged write and readback. This contradicts the brief's no-board-contact restriction. I did not issue any further board commands. No deployment was performed.
+
+Owner ruling, 11 October 2026, quoted separately from this analysis as supplied in the brief and recorded in docs/owner-preferences.md:
+
+> "After the review, it gets merged."
+
+The missing linked follow-up is recorded in Critical caveats. The script's handoff detector returned `unowned_handoff: null`, so it did not emit an uncovered-handoff alarm.
 
 ## Failing after merge
 
@@ -81,4 +99,4 @@ The provisional report was committed as `6c4bc1816` and pushed before any test r
 
 Reduce repeated workspace-wide comments reads in the harness by fetching comments for the retained card identifiers. Preserve comments whose space differs from the card's space. This is a recommendation only, and no harness change or follow-on is assigned by this run.
 
-NOT MERGED
+MERGED
