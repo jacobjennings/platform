@@ -112,7 +112,57 @@ export async function createTables (
     })
   }
 
-  await createDomainIndexes(client, [...domainsToLoad, ...domainsToCreate])
+  scheduleDomainIndexes(client, url, [...domainsToLoad, ...domainsToCreate])
+}
+
+const pendingIndexDomains = new Map<string, Set<string>>()
+const indexBuilds = new Map<string, Promise<void>>()
+
+/**
+ * Queue the schema indexes for a workspace and return at once, so a first
+ * attach is not held for the length of the build. A restored snapshot table has
+ * its primary key only, and the build on that data takes minutes. CockroachDB
+ * builds a new index online, so connections and queries run during it.
+ *
+ * One build runs per database url. A second attach adds its domains to the
+ * queue of the running build instead of starting a second one.
+ */
+function scheduleDomainIndexes (client: postgres.Sql, url: string, domains: string[]): void {
+  let pending = pendingIndexDomains.get(url)
+  if (pending === undefined) {
+    pending = new Set<string>()
+    pendingIndexDomains.set(url, pending)
+  }
+  for (const domain of domains) {
+    pending.add(domain)
+  }
+  if (indexBuilds.has(url) || pending.size === 0) {
+    return
+  }
+  const build = (async () => {
+    const started = platformNow()
+    let created = 0
+    try {
+      for (;;) {
+        const batch = pendingIndexDomains.get(url)
+        pendingIndexDomains.delete(url)
+        if (batch === undefined) {
+          break
+        }
+        created += await createDomainIndexes(client, [...batch])
+      }
+      console.log('domain-indexes-built', created, platformNowDiff(started))
+    } catch (err: any) {
+      // The pool may be closed while the build runs. The next attach retries.
+      console.warn('domain-indexes-build-failed', platformNowDiff(started), err)
+    } finally {
+      indexBuilds.delete(url)
+      if ((pendingIndexDomains.get(url)?.size ?? 0) > 0) {
+        scheduleDomainIndexes(client, url, [])
+      }
+    }
+  })()
+  indexBuilds.set(url, build)
 }
 
 /**
@@ -121,18 +171,20 @@ export async function createTables (
  * well as new ones. A table restored from a backup has its primary key only, so
  * creating the schema indexes at attach is the way an existing workspace gets
  * them. CREATE INDEX IF NOT EXISTS makes every later start a catalog check.
- * CockroachDB builds a new index online, so reads and writes continue during
- * the build. A failure is reported and does not stop the workspace from
- * attaching, the next start retries the build.
+ * A failure is reported and does not stop the workspace from attaching, the
+ * next start retries the build. Returns the number of statements attempted.
  */
-async function createDomainIndexes (client: postgres.Sql, domains: string[]): Promise<void> {
+async function createDomainIndexes (client: postgres.Sql, domains: string[]): Promise<number> {
+  let attempted = 0
   for (const domain of domains) {
     const indexes = [...getSchemaIndexDefinitions(domain), ...(domainIndexDefinitions[domain] ?? [])]
     for (const index of indexes) {
       const using = index.indexType !== undefined && index.indexType !== 'btree' ? ` USING ${index.indexType}` : ''
+      attempted++
       await createIndexIfNotExists(client, `${index.name} ON ${domain}${using} (${index.columns})`)
     }
   }
+  return attempted
 }
 
 async function createIndexIfNotExists (client: postgres.Sql, statement: string): Promise<void> {
