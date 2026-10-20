@@ -797,12 +797,12 @@ class Connection implements ClientConnection {
             : (): void => {
                 if (this.requests.get(id) === promise) {
                   this.requests.delete(id)
+                  promise.reject(abortError(signal))
                 }
                 if (promise.reconnectTimer !== undefined) {
                   clearTimeout(promise.reconnectTimer)
                   promise.reconnectTimer = undefined
                 }
-                promise.reject(abortError(signal))
               }
         if (onAbort !== undefined) {
           signal?.addEventListener('abort', onAbort, { once: true })
@@ -821,6 +821,9 @@ class Connection implements ClientConnection {
             this.requests.set(id, promise)
           }
           promise.sendData = (): void => {
+            if (this.closed || signal?.aborted === true || (data.method !== pingConst && this.requests.get(id) !== promise)) {
+              return
+            }
             if (this.websocket?.readyState === ClientSocketReadyState.OPEN) {
               promise.startTime = Date.now()
 
