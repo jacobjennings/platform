@@ -11,6 +11,10 @@ merge was refused by the push guard and is not in this branch. See Deviations.
 
 ## Answer in brief
 
+These are observations from one local run per burst arm. The arms were not
+interleaved across three repetitions, and concurrent host load was not recorded.
+The figures do not establish a repeatable performance comparison.
+
 - **Shared budget versus separate accounts.** The same 16-client burst (6,400
   project reads) on one account hit 35,259 rate-limit responses and waited up to
   118 s to connect. On separate accounts it had zero throttling and every connect
@@ -97,8 +101,9 @@ phase. Each phase value is the median or maximum of those per-second p95 reading
 The separate and raised phases have only three samples each, because the burst
 was short. The event loop was not blocked during the shared burst. Its p95 stayed
 under 42 ms. The 118 s connects happened while the server was lightly loaded.
-So the delay came from the client pacing and the limiter, not from a busy
-server. This run did not isolate which part of the limiter path added the time.
+The counters are consistent with client pacing and limiter delays. Event loop
+samples alone do not exclude other server or host bottlenecks. This run did not
+isolate which part of the request path added the time.
 
 The unthrottled bursts raised event loop delay to about 30 ms at the median.
 Throttling kept the shared burst lighter on the server, at the cost of client time.
@@ -229,7 +234,7 @@ Ongoing cost:
   credential file to keep private. Review access when the identity list changes.
 - Audit reports must map each social id to its identity. The mapping used here
   is one query, kept in scratch files outside the repo.
-- Separate identities removed throttling in this run. They did not remove the
+- Separate identities removed throttling in this run. This run cannot determine whether they remove the
   pool stall that JH-902455 found, because that stall did not reproduce here.
   The cause is still open.
 
