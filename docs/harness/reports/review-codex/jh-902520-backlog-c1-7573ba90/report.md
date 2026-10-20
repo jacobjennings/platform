@@ -41,7 +41,17 @@ The prose checker warned about a 63-word sentence and the term "ClientConnection
 
 ## Merge record
 
-The report was committed and pushed before merging. Merge confirmation and the script record will be added after the script completes. The configured frozen files were not changed by the reviewed range. No settings file changed.
+The approval report was pushed at 99d4cfda30ce146fea972bbd8e7bb0d708489f73 before the merge. The script pushed merge commit 9e0c983af7c7ee7a162cc817e6118586cff474cf to origin/jj/activity-feed. The outcome step confirmed ancestry through a fresh fetch and queued the merged message for the host-side relay. No conflict resolution was needed. No settings file changed.
+
+The copied reviewmerge.json records identical tested and pushed hashes. It records no failing tests or done commands. It reports no handoffs and an unread worker report because no worker-record argument was supplied.
+
+The frozen_files record is:
+
+```json
+"frozen_files": {"paths": ["orchestrator/merge-train.py", "orchestrator/train-queue.py"], "differing_before_merge": [], "restored": [], "differing_after_merge": []}
+```
+
+No gate-results.jsonl was emitted because no test ran. The outcome message was `merged http://huly.lan/workbench/hulyaccessevaluation/tracker/JH-902520`. The command used the offline board configuration. It provides no claim about the live card stage.
 
 ## Critical caveats
 
@@ -59,4 +69,4 @@ None.
 
 No follow-on is declared by this run.
 
-NOT MERGED
+MERGED
