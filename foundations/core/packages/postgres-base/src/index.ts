@@ -354,7 +354,7 @@ class ConnectionInfo {
     try {
       return await Promise.race([
         pending,
-        new Promise<DBClient>((_, reject) => {
+        new Promise<DBClient>((_resolve, reject) => {
           timer = setTimeout(() => {
             const err: any = new Error(
               `Timed out after ${this.reserveTimeoutMs}ms waiting for a database connection`
