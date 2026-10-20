@@ -53,6 +53,7 @@ async function measure(operation, work) {
 // The complete client read keeps its card identities, so the snapshot read can
 // prove it returned the same set.
 let baselineIds = null
+let filteredBaselineIds = null
 let snapshotState = null
 let filteredQuery = null
 async function snapshotConnection () {
@@ -172,6 +173,12 @@ async function run(operation, request) {
         if (!result.matchesBaseline) throw new Error('Snapshot card set differs from the complete client read')
       }
       if (result.failures > 0) throw new Error(`Snapshot reported ${result.failures} failed sections`)
+      if (operation === 'readSnapshotFiltered' && process.env.BOARD_LOAD_MOVER === '0') {
+        if (filteredBaselineIds === null) throw new Error('The filtered walk ran first in a quiet run')
+        if (JSON.stringify([...result.rows].sort()) !== JSON.stringify(filteredBaselineIds)) {
+          throw new Error('Filtered snapshot card set differs from the filtered client walk')
+        }
+      }
       return result
     })
   }
@@ -181,6 +188,7 @@ async function run(operation, request) {
     if (!project) throw new Error('Huly project does not exist')
     const query = await filteredCardsQuery(client, tracker, project._id)
     const result = await filteredRead(client, tracker.class.Issue, query, config.pageSize)
+    filteredBaselineIds = [...result.rows].sort()
     return { rows: result.rows, pages: result.pages }
   })
   if (operation === 'setTaskStage') return measure(operation, () => board.setTaskStage(task.id,

@@ -97,7 +97,7 @@ async function main() {
         await command([children[1]], iteration % 2 === 0 ? 'setTaskStage' : 'postTaskComment', { iteration })
       }
     })().catch(error => { console.error(`mover: ${error.message}`) })
-    for (let iteration = 0; iteration < 3; iteration++) {
+    for (let iteration = 0; iteration < Number(process.env.BOARD_LOAD_ITERATIONS ?? 3); iteration++) {
       await command([children[0]], 'readProjectTasksIds', { iteration })
       await command([children[0]], 'readSnapshotFull', { iteration })
       await command([children[0]], 'readFilteredWalk', { iteration })
