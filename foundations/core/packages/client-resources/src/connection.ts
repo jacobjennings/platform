@@ -65,6 +65,31 @@ const pingTimeout = 10 * SECOND
 const hangTimeout = 5 * 60 * SECOND
 const dialTimeout = 30 * SECOND
 
+/**
+ * Largest pacing delay one connection may add before a request. It stays far
+ * below any ordinary RPC deadline so a single rejection cannot stall a caller.
+ */
+export const MAX_SLOW_DOWN_MS = 100
+/** Delay added when the account budget is in its last third. */
+const SLOW_DOWN_INCREASE_MS = 10
+/** Delay removed by a healthy response. */
+const SLOW_DOWN_DECAY_MS = 10
+
+/**
+ * Next per-request pacing delay for one response.
+ *
+ * A response showing less than a third of the budget left raises the delay.
+ * Every other response lowers it, including responses taken at the normal
+ * limit. That decays a penalty after the budget recovers instead of keeping it
+ * for the connection's lifetime.
+ */
+export function nextSlowDownMs (current: number, rateLimit: RateLimitInfo | undefined): number {
+  if (rateLimit !== undefined && rateLimit.remaining * 3 < rateLimit.limit) {
+    return Math.min(MAX_SLOW_DOWN_MS, current + SLOW_DOWN_INCREASE_MS)
+  }
+  return Math.max(0, current - SLOW_DOWN_DECAY_MS)
+}
+
 function abortError (signal?: AbortSignal): Error {
   const reason = signal?.reason
   if (reason instanceof Error) {
@@ -373,17 +398,10 @@ class Connection implements ClientConnection {
       return
     }
 
-    if (resp.rateLimit !== undefined && resp.rateLimit.remaining < 50) {
+    if (resp.rateLimit !== undefined) {
       this.currentRateLimit = resp.rateLimit
-      if (this.currentRateLimit.remaining < this.currentRateLimit.limit / 3) {
-        if (this.slowDownTimer < 50) {
-          this.slowDownTimer += 50
-        }
-        this.slowDownTimer++
-      } else if (this.slowDownTimer > 0) {
-        this.slowDownTimer--
-      }
     }
+    this.slowDownTimer = nextSlowDownMs(this.slowDownTimer, resp.rateLimit)
 
     if (resp.error !== undefined) {
       if (resp.terminate === true) {
