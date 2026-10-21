@@ -86,6 +86,18 @@ so the new gate skipped each suite. All runs exited 0.
 | `server/account/src/__tests__/postgres-real.test.ts` | suite skipped, exit 0 (1 of 1 suite, 4 of 4 tests skipped) |
 | `services/telegram-bot/pod-telegram-bot/src/__tests__/postgres-real.test.ts` | suite skipped, exit 0 (1 of 1 suite, 16 of 16 tests skipped) |
 
+Finally the exact shape of the failing health operations was run:
+`node common/scripts/install-run-rush.js test --only <package>` for the seven
+packages in the table. It exited 0 with
+`==[ SUCCESS WITH WARNINGS: 7 operations ]==`; the two obvious warnings are
+Jest's `forceExit` notes. Per package: `postgres` 3 passed and 2 skipped suites
+(104 passed, 101 skipped tests), `mongo` 1 skipped suite (31 tests),
+`elastic` 1 skipped suite (3 tests), `kafka` 1 skipped suite (2 tests),
+`pod-fulltext` 1 skipped suite (3 tests), `account` 7 passed and 1 skipped
+suites (480 passed, 4 skipped tests), `pod-telegram-bot` 1 skipped suite
+(16 tests). The suites that still executed are the ones that never needed the
+docker stack.
+
 The `pod-fulltext` suite was run twice. The first run happened while no service
 was listening and skipped. The second run was made after the import fix
 described below and, with the service stack listening, executed all three
