@@ -103,7 +103,7 @@ The compression row is one jest run of two files, `compression.spec.ts` and `ser
 
 The card's acceptance is a green `tests.full_suite`. That unit is the bare command `node common/scripts/install-run-rush.js test` under `env -i`. With no database, Kafka or Elasticsearch listening and no `DB_URL`, `ELASTIC_URL` or `MONGO_URL`, that command still fails the integration files on this host. The repository cannot start those services from `rush test` without changing every package's test script or adding a root-level hook. I did not do that, because it would change shared upstream files for a harness provisioning gap, and problems with the harness belong to the Director.
 
-The repository's own CI command is green by construction, and every named card case passes on this tip when the stack and environment from `.github/workflows/main.yml` are present.
+I did not run the full suite, because a worker runs targeted files only. Every named card case passes on this tip when the stack and environment from `.github/workflows/main.yml` are present, and the two repository defects above are fixed.
 
 ## RECOMMENDATIONS
 
