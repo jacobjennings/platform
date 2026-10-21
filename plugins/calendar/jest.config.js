@@ -1,3 +1,8 @@
+// Recurring rules are built from UTC midnight timestamps in these tests. They
+// assume the runner's local day is UTC, as the GitHub runner is. Pin it so a
+// developer machine in another timezone runs the same assertions.
+process.env.TZ = 'UTC'
+
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
