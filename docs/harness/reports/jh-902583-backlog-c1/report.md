@@ -53,8 +53,9 @@ read (`DB_URL`, `POSTGRES_URL`, `MONGO_URL`, `ELASTIC_URL`), so a machine with
 the stack running still executes every test unchanged. The suites are skipped
 only when the endpoint they need is not listening.
 
-The product code is untouched. Nothing in the suites was deleted or weakened;
-the assertions run whenever the database, queue or search service is up.
+The product code is untouched. Coverage is reduced when a prerequisite port
+is unreachable because the affected suite is skipped. A successful TCP probe
+does not establish that the service is ready or correctly configured.
 
 ## Merge
 
