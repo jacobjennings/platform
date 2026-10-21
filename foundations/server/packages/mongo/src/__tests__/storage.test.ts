@@ -31,13 +31,16 @@ import { createMongoAdapter, createMongoTxAdapter } from '..'
 import { getMongoClient, type MongoClientReference, shutdownMongo } from '../utils'
 import { genMinModel } from './minmodel'
 import { createTaskModel, type Task, type TaskComment, taskPlugin } from './tasks'
+import { isUrlReachable } from './test-infra'
 
 const txes = genMinModel()
 
 createTaskModel(txes)
 
-describe('mongo operations', () => {
-  const mongodbUri: string = process.env.MONGO_URL ?? 'mongodb://localhost:27018'
+const mongodbUri: string = process.env.MONGO_URL ?? 'mongodb://localhost:27018'
+const describeMongo = isUrlReachable(mongodbUri) ? describe : describe.skip
+
+describeMongo('mongo operations', () => {
   let mongoClient!: MongoClientReference
   let dbUuid = crypto.randomUUID() as WorkspaceUuid
   let hierarchy: Hierarchy

@@ -1,13 +1,16 @@
 import { generateId, MeasureMetricsContext, type WorkspaceUuid } from '@hcengineering/core'
 import { createPlatformQueue, parseQueueConfig } from '..'
+import { isAddressReachable } from './test-infra'
 
 jest.setTimeout(30000) // Reduced from 120000
 const testCtx = new MeasureMetricsContext('test', {})
+const kafkaAddress = 'localhost:19093'
+const describeQueue = isAddressReachable(kafkaAddress) ? describe : describe.skip
 
-describe('queue', () => {
+describeQueue('queue', () => {
   it('check-queue', async () => {
     const genId = generateId()
-    const queue = createPlatformQueue(parseQueueConfig('localhost:19093;-queue_testing-' + genId, 'test-' + genId, ''))
+    const queue = createPlatformQueue(parseQueueConfig(kafkaAddress + ';-queue_testing-' + genId, 'test-' + genId, ''))
     const docsCount = 50 // Reduced from 100 for faster tests
     try {
       let msgCount = 0
@@ -64,7 +67,7 @@ describe('queue', () => {
 
   it('check-processing-errors', async () => {
     const genId = generateId()
-    const queue = createPlatformQueue(parseQueueConfig('localhost:19093;-queue_testing-' + genId, 'test-' + genId, ''))
+    const queue = createPlatformQueue(parseQueueConfig(kafkaAddress + ';-queue_testing-' + genId, 'test-' + genId, ''))
 
     try {
       let counter = 2

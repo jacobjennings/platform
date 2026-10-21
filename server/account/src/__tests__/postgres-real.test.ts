@@ -8,16 +8,21 @@ import { PostgresAccountDB } from '../collections/postgres/postgres'
 import { type SocialId } from '../types'
 import { createAccount, getDbFlavor, normalizeValue } from '../utils'
 
+import { isUrlReachable } from './test-infra'
+
 jest.setTimeout(90000)
 
-describe('real-account', () => {
-  // It should create a DB and test on it for every execution, and drop it after it.
-  //
-  // Use environment variable or default to localhost CockroachDB
-  const cockroachDB: string = process.env.DB_URL ?? 'postgresql://root@localhost:26258/defaultdb?sslmode=disable'
+// It should create a DB and test on it for every execution, and drop it after it.
+//
+// Use environment variable or default to localhost CockroachDB
+const cockroachDB: string = process.env.DB_URL ?? 'postgresql://root@localhost:26258/defaultdb?sslmode=disable'
 
-  const postgresDB: string = process.env.POSTGRES_URL ?? 'postgresql://postgres:postgres@localhost:5433/postgres'
+const postgresDB: string = process.env.POSTGRES_URL ?? 'postgresql://postgres:postgres@localhost:5433/postgres'
 
+const databasesAvailable = isUrlReachable(cockroachDB) && isUrlReachable(postgresDB)
+const describeRealAccount = databasesAvailable ? describe : describe.skip
+
+describeRealAccount('real-account', () => {
   let crDbUri = cockroachDB
   let pgDbUri = postgresDB
 

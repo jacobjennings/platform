@@ -18,13 +18,17 @@ import { Class, Doc, MeasureMetricsContext, PersonId, Ref, Space, WorkspaceUuid 
 import type { FullTextAdapter, IndexedDoc } from '@hcengineering/server-core'
 
 import { createElasticAdapter } from '../adapter'
+import { isUrlReachable } from './test-infra'
 
-describe('Elastic Adapter', () => {
+const elasticUrl = process.env.ELASTIC_URL ?? 'http://localhost:9201/'
+const describeElastic = isUrlReachable(elasticUrl) ? describe : describe.skip
+
+describeElastic('Elastic Adapter', () => {
   let adapter: FullTextAdapter
   const ctx = new MeasureMetricsContext('-', {})
   const ws1 = 'ws1' as WorkspaceUuid
   beforeEach(async () => {
-    adapter = await createElasticAdapter(process.env.ELASTIC_URL ?? 'http://localhost:9201/')
+    adapter = await createElasticAdapter(elasticUrl)
   })
 
   afterEach(async () => {

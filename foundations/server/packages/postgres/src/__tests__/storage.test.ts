@@ -34,6 +34,7 @@ import {
 } from '..'
 import { genMinModel } from './minmodel'
 import { createTaskModel, type Task, type TaskComment, taskPlugin } from './tasks'
+import { isUrlReachable } from './test-infra'
 
 const txes = genMinModel()
 
@@ -41,8 +42,11 @@ createTaskModel(txes)
 
 const contextVars: Record<string, any> = {}
 
-describe('postgres operations', () => {
-  const baseDbUri: string = process.env.DB_URL ?? 'postgresql://root@localhost:26258/defaultdb?sslmode=disable'
+// Use environment variable or default to localhost CockroachDB
+const baseDbUri: string = process.env.DB_URL ?? 'postgresql://root@localhost:26258/defaultdb?sslmode=disable'
+const describePostgres = isUrlReachable(baseDbUri) ? describe : describe.skip
+
+describePostgres('postgres operations', () => {
   let dbUuid = crypto.randomUUID() as WorkspaceUuid
   let dbUri: string = baseDbUri.replace('defaultdb', dbUuid)
   const clientRef: PostgresClientReference = getDBClient(baseDbUri)

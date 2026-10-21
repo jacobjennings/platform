@@ -23,6 +23,8 @@ import { type AccountUuid, type WorkspaceUuid } from '@hcengineering/core'
 import { PostgresDB } from '../db'
 import { type ChannelRecord, type MessageRecord, type OtpRecord, type ReplyRecord } from '../types'
 
+import { isUrlReachable } from './test-infra'
+
 jest.mock('../config', () => ({
   default: {
     AccountsURL: 'http://localhost:4020',
@@ -44,11 +46,14 @@ jest.mock('../config', () => ({
 
 jest.setTimeout(90000)
 
-describe('PostgresDB compatibility tests', () => {
-  // Use environment variables or default to localhost databases
-  const cockroachDB: string = process.env.DB_URL ?? 'postgresql://root@localhost:26257/defaultdb?sslmode=disable'
-  const postgresDB: string = process.env.POSTGRES_URL ?? 'postgresql://postgres:postgres@localhost:5433/postgres'
+// Use environment variables or default to localhost databases
+const cockroachDB: string = process.env.DB_URL ?? 'postgresql://root@localhost:26257/defaultdb?sslmode=disable'
+const postgresDB: string = process.env.POSTGRES_URL ?? 'postgresql://postgres:postgres@localhost:5433/postgres'
 
+const databasesAvailable = isUrlReachable(cockroachDB) && isUrlReachable(postgresDB)
+const describePostgresDB = databasesAvailable ? describe : describe.skip
+
+describePostgresDB('PostgresDB compatibility tests', () => {
   let crDbUri = cockroachDB
   let pgDbUri = postgresDB
 

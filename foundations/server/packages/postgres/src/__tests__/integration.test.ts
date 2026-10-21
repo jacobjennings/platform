@@ -42,16 +42,18 @@ import {
 } from '..'
 import { genMinModel } from './minmodel'
 import { createTaskModel, TaskReproduce, TaskStatus, type Task, type TaskComment, taskPlugin } from './tasks'
+import { isUrlReachable } from './test-infra'
 
 const txes = genMinModel()
 createTaskModel(txes)
 
 const contextVars: Record<string, any> = {}
 
-describe('PostgreSQL Integration Tests (Real Database)', () => {
-  // Use environment variable or default to localhost CockroachDB
-  const baseDbUri: string = process.env.DB_URL ?? 'postgresql://root@localhost:26258/defaultdb?sslmode=disable'
+// Use environment variable or default to localhost CockroachDB
+const baseDbUri: string = process.env.DB_URL ?? 'postgresql://root@localhost:26258/defaultdb?sslmode=disable'
+const describeIntegration = isUrlReachable(baseDbUri) ? describe : describe.skip
 
+describeIntegration('PostgreSQL Integration Tests (Real Database)', () => {
   // Administrative client for creating/dropping test databases
   // This connects to 'defaultdb' and is used ONLY for DB admin operations
   let adminClientRef: PostgresClientReference

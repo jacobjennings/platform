@@ -28,10 +28,16 @@ import { decodeToken, generateToken } from '@hcengineering/server-token'
 import { randomUUID } from 'crypto'
 import { createDoc, test, type TestDocument } from './minmodel'
 
-import { dbConfig, dbUrl, elasticIndexName, model, prepare, preparePipeline } from './utils'
+import { dbConfig, dbUrl, elasticIndexName, fullTextDbUrl, model, prepare, preparePipeline } from './utils'
+import { isAddressReachable, isUrlReachable } from './test-infra'
 
 prepare()
 jest.mock('franc-min', () => ({ franc: () => 'en' }), { virtual: true })
+
+const kafkaAddress = 'localhost:19093'
+const indexingInfrastructureAvailable =
+  isUrlReachable(dbUrl) && isUrlReachable(fullTextDbUrl) && isAddressReachable(kafkaAddress)
+const describeIndexing = indexingInfrastructureAvailable ? describe : describe.skip
 
 jest.setTimeout(30000)
 
@@ -123,7 +129,7 @@ class TestQueue {
   }
 }
 
-describe('full-text-indexing', () => {
+describeIndexing('full-text-indexing', () => {
   const toolCtx = new MeasureMetricsContext('tool', {})
 
   it('check-file-indexing', async () => {
