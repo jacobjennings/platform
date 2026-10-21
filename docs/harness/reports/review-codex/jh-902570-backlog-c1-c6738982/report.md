@@ -56,13 +56,25 @@ The full suite remains unrun under the review rules. The service lifecycle and o
 
 The marked card comment attaches report.md twice with no caption. It names no PNG capture. The matching local worker report was read as text evidence. There is no changed screen to suggest capturing. No browser or service was started by this review.
 
-No frozen file changed in this branch. No harness settings file changed, so candidate settings loading is not applicable. The merge record will supply the exact frozen_files result.
+No frozen file changed in this branch. No harness settings file changed, so candidate settings loading is not applicable. The merge record confirms no restore was needed.
 
 The worker recommendations identify harness work without a follow-up card. This is an uncovered handoff. It does not stop the merge, and this run declares no follow-on.
 
 ## Merge record
 
-The final report is committed and pushed before invoking the merge script. The script alone merges and pushes. The merge hash and ancestry outcome will be recorded here after execution.
+The final report is committed and pushed before invoking the merge script. The script alone merges and pushes. The pushed merge commit is 67062797f34d3c5cff44505590e752564642371e. Its base is 745f96d311a2a3caa7adf717e80066c33665e8e6. Its reviewed tip is 8574440b74cf909c8cbc384cedd91fbaa389efd6. It merged without conflicts. No named items ran, and no formal test reuse was requested.
+
+The outcome command exited 0 after a fresh fetch and ancestry check. It queued the merged-with-critical-caveats message for the host-side relay. This confirms the reviewed implementation and report tip are in origin/jj/activity-feed. The host relay owns subsequent board reconciliation. This review did not read a board stage back.
+
+The script used a temporary records folder because the run folder was not writable. reviewmerge.json is copied beside this report. No gate-results.jsonl was emitted because no items ran. The adjacent empty file preserves that empty result set.
+
+The record has an empty failing_after_merge list and an empty failing_checks list. Its frozen-file result is quoted below.
+
+```json
+"frozen_files": {"paths": ["orchestrator/merge-train.py", "orchestrator/train-queue.py"], "differing_before_merge": [], "restored": [], "differing_after_merge": []}
+```
+
+No structured handoff was detected by the script. The external preparation recommendation above still lacks a follow-up card. Main health supplies the later full-suite check.
 
 Prose check exited 0. It reported these advisory warnings:
 
@@ -84,4 +96,4 @@ The length warning concerns the test table. Director names the role responsible 
 
 The Director should track the external service preparation gap with a follow-up card. This run does not create one. No deployment was performed.
 
-NOT MERGED
+MERGED
