@@ -130,6 +130,12 @@ changed.
   skipped when the stack is absent, so regressions in PostgreSQL, Mongo,
   Elasticsearch and Kafka adapters are only caught by jobs that do start the
   stack.
+- `services/telegram-bot/pod-telegram-bot/src/__tests__/postgres-real.test.ts`
+  defaults CockroachDB to port 26257, while this fork's
+  `tests/docker-compose.yaml` maps CockroachDB to host port 26258. Even with
+  the stack up, that suite stays skipped unless `DB_URL` is set. Pointing it at
+  26258 would let it run with the documented stack, but that changes what the
+  suite tests against, so it was left as the upstream author wrote it.
 - The same probe could move to a shared test-support module if more packages
   start depending on infrastructure. It is duplicated per package today because
   these packages share no test-support dependency and each `tsconfig` limits
