@@ -5,13 +5,13 @@ Card: http://huly.lan/workbench/hulyaccessevaluation/tracker/JH-902570
 - Parent branch: `origin/jj/activity-feed` at `745f96d311a2a3caa7adf717e80066c33665e8e6`
 - Run branch: `codex/jh-902570-backlog-c1`
 - Code tip tested and pushed: `ffd94af3570ce77d65f19ae395671e02a62979d6`
-- Branch tip after this record: one report-only commit on top of the code tip. It adds `docs/reports/jh-902570-backlog-c1/` and `docs/harness/reports/jh-902570-backlog-c1/` and changes no code or test file.
+- Reviewed implementation tip: `c6738982820cf217ea0c30142d1711b275088e36`, with three report-only commits on top of the code tip. They add `docs/reports/jh-902570-backlog-c1/` and `docs/harness/reports/jh-902570-backlog-c1/` and change no code or test file.
 - Base check: `git merge-base --is-ancestor 745f96d311a2... HEAD` exited 0, so the parent tip is in this branch. No merge was needed at the start. The branch was already at the parent tip.
 - No contact with `huly.lan`. Every test ran with `HULY_BOARD_CONFIG` at the offline port 9 and `VIKUNJA_BASE_URL=http://127.0.0.1:9`.
 
 ## What the card said, checked against the tree
 
-The card names nine jest files across the fork. All nine exist at these paths on `745f96d3`:
+The card lists nine distinct failing basenames. They resolve to ten Jest files across the fork. All ten exist at these paths on `745f96d3`:
 
 - `server/account/src/__tests__/postgres-real.test.ts`
 - `services/telegram-bot/pod-telegram-bot/src/__tests__/postgres-real.test.ts`
