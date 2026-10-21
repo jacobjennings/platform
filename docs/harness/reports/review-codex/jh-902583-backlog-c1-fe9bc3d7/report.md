@@ -55,7 +55,7 @@ Prose check: `python3 board/board_text.py <report>` exited 0 and warned: "paragr
 
 ## Merge state
 
-No merge was attempted because the verdict requires a Director decision. A fresh fetch found `origin/jj/activity-feed` at `67062797f34d3c5cff44505590e752564642371e`. The reviewed tip is not its ancestor. The project's run repo record names `jj/activity-feed` as its main branch. No deployment ran.
+No merge was attempted because the verdict requires a Director decision. A fresh fetch found `origin/jj/activity-feed` at `67062797f34d3c5cff44505590e752564642371e`. The reviewed tip is not its ancestor. The project's run repo record names `jj/activity-feed` as its main branch. No deployment ran. The required outcome command exited 1 for the non-merge verdict and queued "not merged: verdict is Director decision." with the source card link for host-side delivery to the Orchestrator and Director.
 
 ## Failing after merge
 
