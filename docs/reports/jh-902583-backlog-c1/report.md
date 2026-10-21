@@ -82,9 +82,25 @@ skipped each suite. All runs exited 0.
 | `foundations/server/packages/mongo/src/__tests__/storage.test.ts` | suite skipped, exit 0 (1 of 1 suite, 31 of 31 tests skipped) |
 | `foundations/server/packages/elastic/src/__tests__/adapter.test.ts` | suite skipped, exit 0 (1 of 1 suite, 3 of 3 tests skipped) |
 | `foundations/server/packages/kafka/src/__test__/queue.spec.ts` | suite skipped, exit 0 (1 of 1 suite, 2 of 2 tests skipped) |
-| `pods/fulltext/src/__tests__/indexing.spec.ts` | suite skipped, exit 0 (1 of 1 suite, 3 of 3 tests skipped) |
+| `pods/fulltext/src/__tests__/indexing.spec.ts` | first run: suite skipped, exit 0 (stack absent); second run with the stack up: **passed**, 3 of 3 tests, 38.5 s, exit 0 |
 | `server/account/src/__tests__/postgres-real.test.ts` | suite skipped, exit 0 (1 of 1 suite, 4 of 4 tests skipped) |
 | `services/telegram-bot/pod-telegram-bot/src/__tests__/postgres-real.test.ts` | suite skipped, exit 0 (1 of 1 suite, 16 of 16 tests skipped) |
+
+The `pod-fulltext` suite was run twice. The first run happened while no service
+was listening and skipped. The second run reproduced the import bug described
+below and, with the service stack listening, executed all three indexing tests
+and passed. That stack (`huly-harness-huly-suite-*` containers on 26258, 5433,
+27018, 9201, 19093) was started by another harness run, not by this one; no
+stack was started or stopped here.
+
+The seven packages were also type-checked with
+`node common/scripts/install-run-rush.js validate --to <package>` for all seven.
+That check caught a real defect that the Jest run could not: Jest transpiles
+without diagnostics, so `fullTextDbUrl` (wrong, the export is `fullTextDbURL`)
+silently evaluated to `undefined`, which made the fulltext gate always skip.
+After renaming the import, `rush validate --to @hcengineering/pod-fulltext`
+exited 0 and the rerun executed the three tests. The other six packages passed
+validation in the same run.
 
 To prove the gate is not stuck in the skip state, the compiled probe itself was
 checked against a listener started for the check only: `isPortReachable` was
@@ -92,8 +108,13 @@ checked against a listener started for the check only: `isPortReachable` was
 and `isUrlReachable` returned the same answers
 (`{"openPort":true,"closedPort":false,"openAddress":true,"openUrl":true,"closedUrl":false}`).
 With the docker stack from `tests/prepare-tests.sh` running, the same probes
-return `true` and the original suites execute unchanged; that path was not run
-here because the stack was not started in this run.
+return `true` and the original suites execute unchanged. The `pod-fulltext`
+rerun above exercised exactly that path. The stack belonged to another run and
+was torn down shortly afterwards; `mongo` and `postgres/storage` were re-run
+after it disappeared and skipped again (31 and 8 tests), which confirms the
+gate follows service availability in both directions rather than being pinned
+to skip. The remaining suites were not re-run against that stack because it was
+already gone (and while it lived it was in use by the run that started it).
 
 ## Changes outside the report path
 
