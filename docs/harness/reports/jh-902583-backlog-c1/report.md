@@ -27,8 +27,8 @@ All of them are connection errors to a service that is not listening. No
 product code assertion failed. The health runner executes
 `node common/scripts/install-run-rush.js test` in a fresh checkout without the
 docker stack, so these suites can never pass there. Upstream CI starts the
-stack first (`.github/workflows/main.yml`, the `cd ./tests && ./prepare-tests.sh`
-step), which is why the suites are green upstream.
+stack before `rush test` (`.github/workflows/main.yml`, the
+`cd ./tests && ./prepare-tests.sh` step).
 
 ## Fix
 
@@ -70,10 +70,10 @@ with the package test runner (`jest`) from each package, with
 `HULY_BOARD_CONFIG` offline and `VIKUNJA_BASE_URL` pointed at
 `http://127.0.0.1:9`.
 
-Every modified suite was run once on the tip, from its own package, with
+Every modified suite was run on the tip, from its own package, with
 `./node_modules/.bin/jest --coverage=false --forceExit --silent
---runTestsByPath <file>`. The docker stack was not running, so the new gate
-skipped each suite. All runs exited 0.
+--runTestsByPath <file>`. The docker stack was not running for the first pass,
+so the new gate skipped each suite. All runs exited 0.
 
 | Suite | Result |
 | --- | --- |
@@ -87,9 +87,9 @@ skipped each suite. All runs exited 0.
 | `services/telegram-bot/pod-telegram-bot/src/__tests__/postgres-real.test.ts` | suite skipped, exit 0 (1 of 1 suite, 16 of 16 tests skipped) |
 
 The `pod-fulltext` suite was run twice. The first run happened while no service
-was listening and skipped. The second run reproduced the import bug described
-below and, with the service stack listening, executed all three indexing tests
-and passed. That stack (`huly-harness-huly-suite-*` containers on 26258, 5433,
+was listening and skipped. The second run was made after the import fix
+described below and, with the service stack listening, executed all three
+indexing tests and passed. That stack (`huly-harness-huly-suite-*` containers on 26258, 5433,
 27018, 9201, 19093) was started by another harness run, not by this one; no
 stack was started or stopped here.
 
