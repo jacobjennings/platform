@@ -93,7 +93,7 @@ The gate did not read a count from this Jest log, so `Ran` is `None`. The counts
 - `Tests: 93 passed, 93 total`
 - `Time: 67.777 s`
 
-The gate log is `docs/reports/jh-902635-backlog-c1/gate-run-logs/`.
+The gate log is in `docs/reports/jh-902635-backlog-c1/gate-run-logs/`. The repo ignores `*.log`, so that log stays local and is not committed.
 
 Why rc is 1 although all 93 pass:
 
