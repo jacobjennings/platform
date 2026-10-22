@@ -48,6 +48,10 @@ createTaskModel(txes)
 
 const contextVars: Record<string, any> = {}
 
+// Each test creates, fills and drops its own database. Suites that run in
+// parallel share one CockroachDB, so that setup can pass Jest's 5 second default.
+jest.setTimeout(60000)
+
 describe('PostgreSQL Integration Tests (Real Database)', () => {
   // Use environment variable or default to localhost CockroachDB
   const baseDbUri: string = process.env.DB_URL ?? 'postgresql://root@localhost:26258/defaultdb?sslmode=disable'
