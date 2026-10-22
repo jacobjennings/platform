@@ -36,7 +36,17 @@ The 60 second budget has not been exercised under the failing health run's exact
 
 ## Merge record
 
-The prescribed merge script will merge the reviewed branch into the repository record's origin/jj/activity-feed. The report will record the resulting commit and ancestry outcome after the push.
+The refreshed harness script merged review tip 9cf2ef16f into origin/jj/activity-feed from base 67062797f34d3c5cff44505590e752564642371e. Both tested and pushed are 1168bf6251c1d9347c92e4447d416956049b99e5. There were no conflicts, reviewer implementation changes, test items or failing checks.
+
+The outcome command exited 0 after its fresh-fetch ancestry check. It queued "merged http://huly.lan/workbench/hulyaccessevaluation/tracker/JH-902635" in the run's worker/session-outcome.json for the host-side relay. Card stage read-back is performed by that relay and was not observed in this turn.
+
+The record's frozen_files line is:
+
+```json
+"frozen_files": {"paths": ["orchestrator/merge-train.py", "orchestrator/train-queue.py"], "differing_before_merge": [], "restored": [], "differing_after_merge": []}
+```
+
+The attached reviewmerge.json is copied from the script's fallback records folder. The script produced no gate-results.jsonl because no test item ran. The report text checker exited 0 with no warnings.
 
 ## Failing after merge
 
@@ -50,4 +60,4 @@ The prescribed merge script will merge the reviewed branch into the repository r
 
 Accept the bounded timeout change. Main health provides the next full-suite result. No deployment or separate follow-on is requested.
 
-NOT MERGED
+MERGED
